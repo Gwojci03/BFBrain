@@ -1,0 +1,16 @@
+Using version ^2.13.0 for tensorflow
+
+Updating dependencies
+Resolving dependencies...
+
+Package operations: 0 installs, 7 updates, 0 removals
+
+  • Updating idna (3.4 /croot/idna_1666125576474/work -> 3.4)
+  • Downgrading numpy (1.25.2 -> 1.24.3)
+  • Downgrading keras (2.14.0 -> 2.13.1)
+  • Downgrading tensorboard (2.14.0 -> 2.13.0)
+  • Downgrading tensorflow-estimator (2.14.0 -> 2.13.0)
+  • Updating wrapt (1.14.1 -> 1.15.0)
+  • Downgrading tensorflow (2.14.0rc1 -> 2.13.0)
+
+Writing lock file

@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "BFBrain"
+version = "1.0.1"
+description = "Use active learning to determine the bounded-from-below region in parameter space of a multiscalar potential in quantum field theory."
+authors = ["George Wojcik <gwojcik@wisc.edu>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.9,<3.11"
+tensorflow = "^2.13.0"
+jax = "^0.4.14"
+numpy = "^1.26.0"
+scipy = "^1.11.2"
+sympy = "^1.12"
+jaxopt = "^0.8"
+matplotlib = "^3.8.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

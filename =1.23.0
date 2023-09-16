@@ -1,0 +1,16 @@
+Using version ^1.26.0 for numpy
+
+Updating dependencies
+Resolving dependencies...
+
+Package operations: 0 installs, 7 updates, 0 removals
+
+  • Updating idna (3.4 /croot/idna_1666125576474/work -> 3.4)
+  • Updating numpy (1.24.3 -> 1.26.0)
+  • Updating keras (2.13.1 -> 2.14.0)
+  • Updating tensorboard (2.13.0 -> 2.14.0)
+  • Updating tensorflow-estimator (2.13.0 -> 2.14.0)
+  • Downgrading wrapt (1.15.0 -> 1.14.1)
+  • Updating tensorflow (2.13.0 -> 2.14.0rc1)
+
+Writing lock file
