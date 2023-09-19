@@ -29,6 +29,8 @@ After completing training, the classifier produced by BFBrain is saved in a port
 with Tensorflow installed. Because BFBrain's classifiers are Bayesian neural networks approximated by concrete dropout [2]_, useful metrics of multiple sources of uncertainty can be extracted from their outputs. 
 These uncertainty metrics can in turn be used to estimate the reliability of the neural network's predictions on unknown data, improving the utility of an already highly performant classifier.
 
+The code samples in the tutorial are accompanied by `corresponding Jupyter notebooks <https://github.com/Gwojci03/BFBrain/tree/main/examples>`_ available in the online repository-- a user may find it helpful to follow along with these notebooks, which reproduce much of the code given in the tutorial.
+
 .. toctree::
    :maxdepth: 2
    :caption: Tutorial:
