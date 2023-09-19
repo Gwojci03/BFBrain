@@ -13,12 +13,14 @@ import bfbrain
 project = 'bfbrain'
 copyright = '2023, George Wojcik'
 author = 'George Wojcik'
-release = '1.0'
+release = '1.1'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.autosummary', 'sphinx.ext.napoleon', 'sphinx.ext.viewcode']
+
+html_theme = 'sphinx_rtd_theme'
 
 autodoc_member_order = 'bysource'
 
