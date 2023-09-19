@@ -1,6 +1,6 @@
 tensorflow >= 2.13.0
 jax >= 0.4.14
-numpy >= 1.26.0
+numpy >= 1.23.0
 scipy >= 1.11.2
 sympy >= 1.12
 jaxopt >= 0.8
