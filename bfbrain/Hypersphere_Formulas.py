@@ -52,8 +52,8 @@ def jax_convert_to_polar(v):
 
     Parameters
     ----------
-    v : jnp.array(jnp.float32, jnp.float32)
-        A 2-D Jax NumPy array of points in Cartesian coordinates
+    v : jnp.array(jnp.float32)
+        A 1-D Jax NumPy array representing a point in Cartesian coordinates.
 
     Returns
     -------
@@ -72,8 +72,8 @@ def jax_convert_from_polar(v):
 
     Parameters
     ----------
-    v : jnp.array(jnp.float32, jnp.float32)
-        A 2-D Jax NumPy array of points in polar coordinates
+    v : jnp.array(jnp.float32)
+        A 1-D Jax NumPy array represenging a point in polar coordinates.
 
     Returns
     -------

@@ -1,7 +1,7 @@
-"""This module contains a number of SymPy functions for the quartic parts of 
-scalar potentials which the program can parse for analysis. Any other potential 
-functions you may want to use can be implemented by writing them in the same 
-format as these.
+"""This module contains a number of SymPy functions for the quartic parts 
+of scalar potentials which the program can parse for analysis. Any other 
+potential functions you may want to use can be implemented by writing them 
+in the same format as these.
 """
 import sympy as sym
 import numpy as np
@@ -10,12 +10,14 @@ from sympy.physics.quantum.dagger import Dagger
 from sympy.matrices.expressions import Trace
 
 def _sim_Trace(M):
-    """A function which simplifies the trace of some matrix."""
+    """A function which simplifies the trace of some matrix.
+    """
     return sym.simplify(Trace(M))
 
 def _sim_expand(x):
-    """A function which expands and simplifies an expression. Useful for eliminating 
-    complex numbers from the potential, so NumPy can work with only real numbers.
+    """A function which expands and simplifies an expression. Useful for 
+    eliminating complex numbers from the potential, so NumPy can work with 
+    only real numbers.
     """
     return sym.simplify(sym.expand(x))
 
@@ -25,9 +27,10 @@ _sqrt2 = sym.sqrt(2)
 
 
 def V_Precustodial(phi, lam):
-    """The "precustodial" generalization of the Georgi-Machacheck model given in 
-    arXiv:hep-ph/2012.13947. The quartic coefficients are parameterized in the 
-    same manner as Eq.(3.4) of that work."""
+    """The "precustodial" generalization of the Georgi-Machacheck 
+    model given in arXiv:hep-ph/2012.13947. The quartic coefficients are 
+    parameterized in the same manner as Eq.(3.4) of that work.
+    """
     H = sym.Matrix([0, phi[0]])
     A = sym.Matrix([[(phi[1] + I*phi[4])/_sqrt2, -phi[2] - I*phi[5]],[phi[3] + I*phi[6], -(phi[1] + I*phi[4])/_sqrt2]])
     B = sym.Matrix([[phi[7], -phi[8] - I*phi[9]], [-phi[8] + I*phi[9], -phi[7]]])/_sqrt2
@@ -44,7 +47,8 @@ def V_Precustodial(phi, lam):
     return QVec.dot(lam)
 
 def V_GM(phi, lam):
-    """The Georgi-Machacheck potential, following the conventions of Eq.(5) of arXiv:hep-ph/1404.2640
+    """The Georgi-Machacheck potential, following the conventions of 
+    Eq.(5) of arXiv:hep-ph/1404.2640
     """
     Phi = sym.Matrix([[phi[0], 0],[0, phi[0]]])/_sqrt2
     X = sym.Matrix([[phi[1] - I*phi[2], phi[3] + I*phi[4], phi[5] + I*phi[6]],[-phi[7] + I*phi[8], _sqrt2*phi[9], phi[7] + I*phi[8]],[phi[5] - I*phi[6], -phi[3] + I*phi[4], phi[1] + I*phi[2]]])/_sqrt2
@@ -63,7 +67,8 @@ def V_GM(phi, lam):
     return QVec.dot(lam)
 
 def V_2HDM(phi, lam):
-    """The most general 2-Higgs doublet model, following the conventions of Eq.(1) of hep-ph/0609018
+    """The most general 2-Higgs doublet model, following the conventions 
+    of Eq.(1) of hep-ph/0609018
     """
     Phi1 = sym.Matrix([0, phi[0]])
     Phi2 = sym.Matrix([phi[1] + I*phi[3], phi[2] + I*phi[4]])

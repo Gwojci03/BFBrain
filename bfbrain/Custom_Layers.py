@@ -5,7 +5,8 @@ import tensorflow as tf
 
 # A custom neural network preprocessing layer which projects any input quartic coefficients onto the unit hypersphere. 
 class HypersphereProjectionLayer(tf.keras.layers.Layer):
-    """A custom neural network preprocessing layer which projects any input quartic coefficients onto the unit hypersphere.
+    """A custom neural network preprocessing layer which projects any 
+    input quartic coefficients onto the unit hypersphere.
     """
     def __init__(self):
         super(HypersphereProjectionLayer, self).__init__()
@@ -25,7 +26,9 @@ class HypersphereProjectionLayer(tf.keras.layers.Layer):
 
 
 def get_weight_regularizer(N, l=1e-2, tau=0.1):
-    """Determines the weight decay constant which should be applied in the loss function with a given precision, prior length scale, and number of training data points.
+    """Determines the weight decay constant which should be applied in the 
+    loss function with a given precision, prior length scale, and number 
+    of training data points.
 
     Parameters
     ----------
@@ -35,7 +38,8 @@ def get_weight_regularizer(N, l=1e-2, tau=0.1):
     l : float, default=1e-2
 
     tau : float, defulat = 0.1
-        neural network precision. For classification networks this is just set to 1.
+        neural network precision. For classification networks this is just 
+        set to 1.
 
     Returns
     -------
@@ -45,7 +49,8 @@ def get_weight_regularizer(N, l=1e-2, tau=0.1):
 
 
 def get_dropout_regularizer(N, tau=0.1, cross_entropy_loss=False):
-    """Controls the regularization term associated with the Bernoulli entropy of the cells' dropout probabilities.
+    """Controls the regularization term associated with the entropy
+    of the cells' dropout probabilities.
 
     Parameters
     ----------
@@ -53,10 +58,12 @@ def get_dropout_regularizer(N, tau=0.1, cross_entropy_loss=False):
         The number of data points in the training data.
 
     tau : float, defulat = 0.1
-        neural network precision. For classification networks this is just set to 1.
+        neural network precision. For classification networks this is just 
+        set to 1.
 
     cross_entropy_loss : bool, default=False
-        Should be True if the loss function is cross entropy (so the neural network is a classifier), and False otherwise.
+        Should be True if the loss function is cross entropy (so the 
+        neural network is a classifier), and False otherwise.
         
     Returns
     -------
@@ -68,9 +75,13 @@ def get_dropout_regularizer(N, tau=0.1, cross_entropy_loss=False):
     return reg
 
 class ConcreteDenseDropout(tf.keras.layers.Dense):
-    """Code for the implementation of concrete dropout. Based heavily on https://github.com/aurelio-amerio/ConcreteDropout, 
-    a Tensorflow 2.0 implementation of the concrete dropout algorithm described in arXiv:1705.07832. Modified from that implementation in order to
-    save the model more easily at the expense of some flexibility. IMPORTANT: these layers perform dropout BEFORE the wrapped operation.
+    """Code for the implementation of concrete dropout. Based 
+    heavily on https://github.com/aurelio-amerio/ConcreteDropout, 
+    a Tensorflow 2.0 implementation of the concrete dropout algorithm 
+    described in arXiv:1705.07832. Modified from that implementation in 
+    order to save the model more easily at the expense of some 
+    flexibility. IMPORTANT: these layers perform dropout BEFORE the 
+    wrapped operation.
     """
     def __init__(self, units, weight_regularizer=1e-6, dropout_regularizer=1e-5, init_min = 0.1, init_max = 0.1, temperature = 0.1, **kwargs):
         super().__init__(units, **kwargs)
