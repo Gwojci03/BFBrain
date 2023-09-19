@@ -1,6 +1,6 @@
 # BFBrain
 
-[Installation](#installation) | [Documentation/Tutorial](https://bfbrain.github.io) | [Examples](https://github.com/Gwojci03/BFBrain/tree/main/examples)
+[Installation](#installation) | [Documentation/Tutorial](https://bfbrain.readthedocs.io) | [Examples](https://github.com/Gwojci03/BFBrain/tree/main/examples)
 
 Use active learning to determine the bounded-from-below region in parameter space of a multiscalar potential in quantum field theory.
 
