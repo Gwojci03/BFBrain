@@ -1,0 +1,1560 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>bfbrain.BFB_Learner &#8212; bfbrain 1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b3523f8e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=039e1c02" />
+    <script src="../../_static/documentation_options.js?v=f2a433a1"></script>
+    <script src="../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for bfbrain.BFB_Learner</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;This module contains the core of BFBrain&#39;s training capabilities, in </span>
+<span class="sd">particular the class BFBLearner, the object which contains the neural </span>
+<span class="sd">network classifier and methods to execute the active learning training</span>
+<span class="sd">loop.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="c1"># Without disabling logging, notifications of each time a Tensorflow model is saved will be printed to the console.</span>
+<span class="n">logging</span><span class="o">.</span><span class="n">disable</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;XLA_PYTHON_CLIENT_PREALLOCATE&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;false&#39;</span>
+
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;TF_CPP_MIN_LOG_LEVEL&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;3&#39;</span>
+
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
+<span class="kn">import</span> <span class="nn">pickle</span>
+
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">bfbrain.Custom_Layers</span> <span class="kn">import</span> <span class="n">HypersphereProjectionLayer</span><span class="p">,</span> <span class="n">ConcreteDenseDropout</span><span class="p">,</span> <span class="n">get_weight_regularizer</span><span class="p">,</span> <span class="n">get_dropout_regularizer</span>
+
+<span class="kn">from</span> <span class="nn">bfbrain.Data_Manager</span> <span class="kn">import</span> <span class="n">DataManager</span><span class="p">,</span> <span class="n">np_data</span>
+<span class="kn">from</span> <span class="nn">bfbrain.AL_Metrics</span> <span class="kn">import</span> <span class="o">*</span>
+
+
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+<span class="kn">from</span> <span class="nn">scipy.special</span> <span class="kn">import</span> <span class="n">hyp2f1</span><span class="p">,</span> <span class="n">gamma</span>
+<span class="kn">from</span> <span class="nn">scipy.optimize</span> <span class="kn">import</span> <span class="n">root_scalar</span>
+
+<span class="k">def</span> <span class="nf">_n_sphere_fraction</span><span class="p">(</span><span class="n">sd</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Given an angle in radians and a number of dimensions, computes the </span>
+<span class="sd">    fraction of the surface area of the unit hypersphere that is subtended </span>
+<span class="sd">    by that angle in that number of dimensions.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    sd : float</span>
+<span class="sd">        An angle (in radians).</span>
+<span class="sd">    </span>
+<span class="sd">    n : int</span>
+<span class="sd">        The number of dimensions of a unit hypersphere.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    float</span>
+<span class="sd">        The fraction of the n-dimensional hypersphere&#39;s surface area that </span>
+<span class="sd">        is subtended by the angle sd.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">gamma</span><span class="p">(</span><span class="mf">0.5</span><span class="o">*</span><span class="n">n</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">gamma</span><span class="p">(</span><span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mf">1.</span><span class="p">))</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)))</span><span class="o">*</span><span class="p">(</span><span class="n">sd</span><span class="o">**</span><span class="p">(</span><span class="n">n</span><span class="o">-</span><span class="mf">1.</span><span class="p">))</span><span class="o">*</span><span class="p">(</span><span class="n">hyp2f1</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mf">1.</span><span class="p">),</span> <span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="n">n</span> <span class="o">+</span> <span class="mf">1.</span><span class="p">),</span> <span class="n">sd</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mf">1.</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">_get_hop_dist</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Tool for estimating a reasonable distance scale hyperparameter for </span>
+<span class="sd">    generating the pool of candidate points to be added to the training </span>
+<span class="sd">    set for active learning (see BFBLearner&#39;s documentation). Does so by </span>
+<span class="sd">    determining the angle delta (in radians) such that on a unit </span>
+<span class="sd">    hypersphere of the specified number of dimensions, the fraction of the </span>
+<span class="sd">    unit hypersphere&#39;s surface area subtended by the angle delta will be </span>
+<span class="sd">    equal to the fraction of points that are bounded-from-below in a </span>
+<span class="sd">    specified set of labelled quartic potential coefficients.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data : np_data</span>
+<span class="sd">        Labelled sets of quartic potential coefficients, uniformly sampled </span>
+<span class="sd">        from the surface of an n-dimensional hypersphere</span>
+<span class="sd">    </span>
+<span class="sd">    n : int</span>
+<span class="sd">        The number of independent real components of each set of quartic </span>
+<span class="sd">        coefficients necessary to uniquely specify a potential.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    float</span>
+<span class="sd">        A recommended distance scale hyperparameter for active learning </span>
+<span class="sd">        (hop_dist in BFBLearner).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">frac</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">pos</span><span class="p">)</span> <span class="o">/</span> <span class="n">data</span><span class="o">.</span><span class="n">n_elements</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">frac</span> <span class="o">&gt;</span> <span class="mf">0.5</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span>
+    <span class="k">def</span> <span class="nf">root_goal</span><span class="p">(</span><span class="n">sd</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">_n_sphere_fraction</span><span class="p">(</span><span class="n">sd</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span> <span class="o">-</span> <span class="n">frac</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">arcsin</span><span class="p">(</span><span class="n">root_scalar</span><span class="p">(</span><span class="n">root_goal</span><span class="p">,</span> <span class="n">bracket</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">])</span><span class="o">.</span><span class="n">root</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="create_seq_network">
+<a class="viewcode-back" href="../../bfbrain.html#bfbrain.BFB_Learner.create_seq_network">[docs]</a>
+<span class="k">def</span> <span class="nf">create_seq_network</span><span class="p">(</span><span class="n">lam_len</span><span class="p">,</span> <span class="n">n_layers</span><span class="p">,</span> <span class="n">n_neurons</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="n">N</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a sequential Bayesian neural network approximated by </span>
+<span class="sd">    concrete dropout.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    lam_len : int</span>
+<span class="sd">        The number of quartic coefficients needed to uniquely specify a </span>
+<span class="sd">        potential in the model.</span>
+
+<span class="sd">    n_layers : int</span>
+<span class="sd">        The number of hidden layers of neurons to include in the model. </span>
+<span class="sd">        Generally recommended to be O(a few)</span>
+
+<span class="sd">    n_neurons : int</span>
+<span class="sd">        The number of neurons in each dense layer. </span>
+<span class="sd">        Recommended to be O(100).</span>
+
+<span class="sd">    l : float</span>
+<span class="sd">        The prior length scale parameter of the neural network. Weights </span>
+<span class="sd">        have a prior distribution of N(0, 1/l**2).</span>
+
+<span class="sd">    N : int</span>
+<span class="sd">        The number of entries in the training data. Needed to determine </span>
+<span class="sd">        the appropriate loss regularization terms in concrete dropout.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tf.keras.Sequential</span>
+<span class="sd">        Returns a neural network </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">#An input layer and a normalization layer.</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Sequential</span><span class="p">([</span><span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">lam_len</span><span class="p">,)),</span> <span class="n">HypersphereProjectionLayer</span><span class="p">()])</span>
+    <span class="n">wr</span> <span class="o">=</span> <span class="n">get_weight_regularizer</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+    <span class="n">dr</span> <span class="o">=</span> <span class="n">get_dropout_regularizer</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">cross_entropy_loss</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">n_layers</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="n">n_neurons</span><span class="p">,</span> <span class="n">activation</span> <span class="o">=</span> <span class="s1">&#39;relu&#39;</span><span class="p">,</span> <span class="n">kernel_regularizer</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">regularizers</span><span class="o">.</span><span class="n">L2</span><span class="p">(</span><span class="n">l2</span> <span class="o">=</span> <span class="n">wr</span><span class="p">),</span> <span class="n">use_bias</span> <span class="o">=</span> <span class="kc">False</span><span class="p">))</span>
+    <span class="c1"># Stack sequential neural network layers of dense neurons.</span>
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_layers</span><span class="p">):</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ConcreteDenseDropout</span><span class="p">(</span><span class="n">n_neurons</span><span class="p">,</span> <span class="n">weight_regularizer</span> <span class="o">=</span> <span class="n">wr</span><span class="p">,</span> <span class="n">dropout_regularizer</span> <span class="o">=</span> <span class="n">dr</span><span class="p">,</span> <span class="n">activation</span> <span class="o">=</span> <span class="s1">&#39;relu&#39;</span><span class="p">,</span> <span class="n">use_bias</span> <span class="o">=</span> <span class="kc">False</span><span class="p">))</span>
+    <span class="c1"># Add a sigmoid activation layer at the end of the neural network.</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ConcreteDenseDropout</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">weight_regularizer</span> <span class="o">=</span> <span class="n">wr</span><span class="p">,</span> <span class="n">dropout_regularizer</span> <span class="o">=</span> <span class="n">dr</span><span class="p">,</span> <span class="n">activation</span> <span class="o">=</span> <span class="s1">&#39;sigmoid&#39;</span><span class="p">,</span> <span class="n">use_bias</span> <span class="o">=</span> <span class="kc">False</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">model</span></div>
+
+
+
+<span class="c1"># A class which holds cumulative information about the model performance at each epoch. An instance of this class is saved as part of the BFBLearner object.</span>
+<div class="viewcode-block" id="AL_history">
+<a class="viewcode-back" href="../../bfbrain.html#bfbrain.BFB_Learner.AL_history">[docs]</a>
+<span class="k">class</span> <span class="nc">AL_history</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Holds cumulative information about the model performance at each </span>
+<span class="sd">    epoch. An instance of this class is saved as part of the BFBLearner </span>
+<span class="sd">    object.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    losses : list(float)</span>
+<span class="sd">        Represents the loss values at each training epoch of the neural </span>
+<span class="sd">        network model, calculated over the training set.</span>
+
+<span class="sd">    accuracy : list(float)</span>
+<span class="sd">        Represents the binary accuracy at each training epoch of the </span>
+<span class="sd">        neural network model, calculated over the training set.</span>
+
+<span class="sd">    val_losses : list(float)</span>
+<span class="sd">        Represents the loss values at each training epoch of the neural </span>
+<span class="sd">        network model, calculated over the validation set. Only tracked </span>
+<span class="sd">        if the validation performance is tracked during the call to </span>
+<span class="sd">        model.fit during training, which the current </span>
+<span class="sd">        BFBrain.BFBLearner.AL_loop method doesn&#39;t do.</span>
+
+<span class="sd">    val_accuracy : list(float)</span>
+<span class="sd">        Represents the binary accuracy at each training epoch of the </span>
+<span class="sd">        neural network model, calculated over the validation set.</span>
+<span class="sd">        Only tracked if the validation performance is tracked during the </span>
+<span class="sd">        call to model.fit during training, which the current </span>
+<span class="sd">        BFBrain.BFBLearner.AL_loop method doesn&#39;t do.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">losses</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">val_losses</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">accuracy</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">val_accuracy</span> <span class="o">=</span> <span class="p">[]</span>
+
+<div class="viewcode-block" id="AL_history.append_history">
+<a class="viewcode-back" href="../../bfbrain.html#bfbrain.BFB_Learner.AL_history.append_history">[docs]</a>
+    <span class="k">def</span> <span class="nf">append_history</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">history</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Merges information from the latest active learning iteration, </span>
+<span class="sd">        extracted from the output of the Tensorflow fit method, into the </span>
+<span class="sd">        AL_history object.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        history : Tensorflow history object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">losses</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">losses</span> <span class="o">+</span> <span class="n">history</span><span class="o">.</span><span class="n">history</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">accuracy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">accuracy</span> <span class="o">+</span> <span class="n">history</span><span class="o">.</span><span class="n">history</span><span class="p">[</span><span class="s2">&quot;binary_accuracy&quot;</span><span class="p">]</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">val_losses</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">val_losses</span> <span class="o">+</span> <span class="n">history</span><span class="o">.</span><span class="n">history</span><span class="p">[</span><span class="s2">&quot;val_loss&quot;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">val_accuracy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">val_accuracy</span> <span class="o">+</span> <span class="n">history</span><span class="o">.</span><span class="n">history</span><span class="p">[</span><span class="s2">&quot;val_binary_accuracy&quot;</span><span class="p">]</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">val_losses</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">val_accuracy</span> <span class="o">=</span> <span class="p">[]</span></div>
+
+
+<div class="viewcode-block" id="AL_history.plot_history">
+<a class="viewcode-back" href="../../bfbrain.html#bfbrain.BFB_Learner.AL_history.plot_history">[docs]</a>
+    <span class="k">def</span> <span class="nf">plot_history</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Plots the data stored in AL_history.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        filepath : str, optional</span>
+<span class="sd">            If specified, saves the resulting plots as .png images to the </span>
+<span class="sd">            directory named in filepath. If not specified, the method just </span>
+<span class="sd">            displays them on the console.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">losses</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">val_losses</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">val_losses</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">([</span><span class="s2">&quot;train_loss&quot;</span><span class="p">,</span> <span class="s2">&quot;val_loss&quot;</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">([</span><span class="s2">&quot;train_loss&quot;</span><span class="p">])</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Epochs&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Loss&quot;</span><span class="p">)</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">filepath</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">filepath</span><span class="o">+</span><span class="s1">&#39;/history_loss.png&#39;</span><span class="p">)</span>
+        
+        <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">accuracy</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">val_accuracy</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">val_accuracy</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">([</span><span class="s2">&quot;train_accuracy&quot;</span><span class="p">,</span> <span class="s2">&quot;val_accuracy&quot;</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">([</span><span class="s2">&quot;train_accuracy&quot;</span><span class="p">])</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Epochs&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Accuracy&quot;</span><span class="p">)</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">filepath</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">filepath</span><span class="o">+</span><span class="s1">&#39;/history_accuracy.png&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+</div>
+
+
+<div class="viewcode-block" id="BFBLearner">
+<a class="viewcode-back" href="../../bfbrain.html#bfbrain.BFB_Learner.BFBLearner">[docs]</a>
+<span class="k">class</span> <span class="nc">BFBLearner</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Class which controls the active learning loop. Holds the model, the </span>
+<span class="sd">    training and validation data, and some information about the training </span>
+<span class="sd">    so far, and includes methods which perform the training loop and</span>
+<span class="sd">    save the model for further training or exporting.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dm : DataManager</span>
+<span class="sd">        The DataManager object that handles the generation and labelling </span>
+<span class="sd">        of new training and validation data.</span>
+
+<span class="sd">    model : tf.keras.Sequential</span>
+<span class="sd">        The sequential neural network that classifies potentials as </span>
+<span class="sd">        bounded-from-below.</span>
+
+<span class="sd">    data_train : np_data</span>
+<span class="sd">        The data on which the neural network is trained. Is periodically </span>
+<span class="sd">        augmented during the active learning loop.</span>
+
+<span class="sd">    data_val : np_data or None</span>
+<span class="sd">        A separate np_data object on which the neural network performance </span>
+<span class="sd">        can be tested. If metrics doesn&#39;t include any performance metrics </span>
+<span class="sd">        on validation data, this should be None.</span>
+
+<span class="sd">    metrics : list(BFBrain.ALMetric)</span>
+<span class="sd">        A list of objects which inherit from the abstract class ALMetric. </span>
+<span class="sd">        These will represent the performance metrics that are tracked </span>
+<span class="sd">        over each active learning iteration.</span>
+
+<span class="sd">    history : AL_history</span>
+<span class="sd">        An AL_history object which tracks the training loss and binary </span>
+<span class="sd">        accuracy over each epoch.</span>
+
+<span class="sd">    learning_rate : float</span>
+<span class="sd">        The learning rate used for the Adam optimizer during neural </span>
+<span class="sd">        network training.</span>
+
+<span class="sd">    hop_dist : float</span>
+<span class="sd">        The distance scale used to generate new training points in the </span>
+<span class="sd">        vicinity of existing bounded-from-below points, given as the </span>
+<span class="sd">        hop_dist argument to DataManager&#39;s generate_L function.</span>
+
+<span class="sd">    rand_fraction : float</span>
+<span class="sd">        The percentage of points generated by DataManager&#39;s generate_L </span>
+<span class="sd">        function that are randomly sampled instead of sampled in the </span>
+<span class="sd">        vicinity of positively labelled points.</span>
+
+<span class="sd">    idx : int</span>
+<span class="sd">        The number of active learning rounds that the model has completed.</span>
+
+<span class="sd">    l_constant : float</span>
+<span class="sd">        The prior length scale for the neural network weights. The neural </span>
+<span class="sd">        network is constructed so that the prior distribution on the </span>
+<span class="sd">        weights is N(0, 1/l**2).</span>
+
+<span class="sd">    Methods</span>
+<span class="sd">    -------</span>
+<span class="sd">    init_for_first_run</span>
+<span class="sd">        The recommended constructor for initializing a BFBLearner object </span>
+<span class="sd">        from scratch.</span>
+
+<span class="sd">    from_file</span>
+<span class="sd">        The constructor for loading a saved BFBLearner object.</span>
+
+<span class="sd">    save_AL_state</span>
+<span class="sd">        Used to save the BFBLearner object.</span>
+
+<span class="sd">    redefine_model</span>
+<span class="sd">        Used to replace the neural network with a new one (for example </span>
+<span class="sd">        adjusting weight priors, or changing the number </span>
+<span class="sd">        of hidden neurons/layers). A use case would be generating a single </span>
+<span class="sd">        BFBLearner object with a large labelled validation set, saving </span>
+<span class="sd">        the object with an untrained neural network, and then loading </span>
+<span class="sd">        the object in different contexts to experiment with different </span>
+<span class="sd">        neural network architectures and hyperparameters.</span>
+
+<span class="sd">    set_l_constant</span>
+<span class="sd">        Sets l_constant to a new value. Same use case as redefine_model.</span>
+
+<span class="sd">    add_metrics</span>
+<span class="sd">        Adds new children of the ALMetric class to the BFBLearner object. </span>
+<span class="sd">        Use this method rather than directly appending objects to the </span>
+<span class="sd">        metrics attribute, since otherwise errors can occur, for example </span>
+<span class="sd">        from adding a metric which requires a validation data set when </span>
+<span class="sd">        the BFBLearner object had no previous validation data set.</span>
+
+<span class="sd">    plot_metrics</span>
+<span class="sd">        Creates simple plots of all the metrics recorded in metrics. </span>
+<span class="sd">        Useful to get a quick visual sense of the performance of the </span>
+<span class="sd">        model after active learning finishes.</span>
+
+<span class="sd">    AL_loop</span>
+<span class="sd">        The core active learning function. Executes the active learning </span>
+<span class="sd">        loop to train the classifier. Highly customizable.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dm</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">data_train</span><span class="p">,</span> <span class="n">data_val</span><span class="p">,</span> <span class="n">metrics</span><span class="p">,</span> <span class="n">history</span><span class="p">,</span> <span class="n">learning_rate</span><span class="p">,</span> <span class="n">hop_dist</span><span class="p">,</span> <span class="n">rand_fraction</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">l_constant</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dm</span> <span class="o">=</span> <span class="n">dm</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_train</span> <span class="o">=</span> <span class="n">data_train</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_val</span> <span class="o">=</span> <span class="n">data_val</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">learning_rate</span> <span class="o">=</span> <span class="n">learning_rate</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hop_dist</span> <span class="o">=</span> <span class="n">hop_dist</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rand_fraction</span> <span class="o">=</span> <span class="n">rand_fraction</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">idx</span> <span class="o">=</span> <span class="n">idx</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span> <span class="o">=</span> <span class="n">metrics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">history</span> <span class="o">=</span> <span class="n">history</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">l_constant</span> <span class="o">=</span> <span class="n">l_constant</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_compile_model</span><span class="p">()</span>
+    
+<div class="viewcode-block" id="BFBLearner.from_file">
+<a class="viewcode-back" href="../../bfbrain.html#bfbrain.BFB_Learner.BFBLearner.from_file">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_file</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">directory</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;A constructor which loads an instance of BFBLearner from </span>
+<span class="sd">        a folder.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        directory : str</span>
+<span class="sd">            Should denote a directory into which a previous BFBLearner </span>
+<span class="sd">            object was saved.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">data_train</span> <span class="o">=</span> <span class="n">np_data</span><span class="o">.</span><span class="n">from_file</span><span class="p">(</span><span class="n">directory</span> <span class="o">+</span> <span class="s1">&#39;/data_train&#39;</span><span class="p">)</span>
+        <span class="n">data_val</span> <span class="o">=</span> <span class="n">np_data</span><span class="o">.</span><span class="n">from_file</span><span class="p">(</span><span class="n">directory</span> <span class="o">+</span> <span class="s1">&#39;/data_val&#39;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">directory</span> <span class="o">+</span> <span class="s1">&#39;/dm.pickle&#39;</span><span class="p">,</span> <span class="n">mode</span> <span class="o">=</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">dm</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">directory</span> <span class="o">+</span> <span class="s1">&#39;/variables.pickle&#39;</span><span class="p">,</span> <span class="n">mode</span> <span class="o">=</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">kwargs</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">directory</span> <span class="o">+</span> <span class="s1">&#39;/history.pickle&#39;</span><span class="p">,</span> <span class="n">mode</span> <span class="o">=</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">history</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">directory</span> <span class="o">+</span> <span class="s1">&#39;/metrics.pickle&#39;</span><span class="p">,</span> <span class="n">mode</span> <span class="o">=</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">metrics</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span><span class="n">directory</span><span class="o">+</span><span class="s1">&#39;/model&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">dm</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">data_train</span><span class="p">,</span> <span class="n">data_val</span><span class="p">,</span> <span class="n">metrics</span><span class="p">,</span> <span class="n">history</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+    
+<div class="viewcode-block" id="BFBLearner.init_for_first_run">
+<a class="viewcode-back" href="../../bfbrain.html#bfbrain.BFB_Learner.BFBLearner.init_for_first_run">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">init_for_first_run</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">dm</span><span class="p">,</span> <span class="n">n_layers</span><span class="p">,</span> <span class="n">n_neurons</span><span class="p">,</span> <span class="n">metrics</span><span class="p">,</span> <span class="n">nlams</span><span class="p">,</span> <span class="n">nlams_val</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">learning_rate</span> <span class="o">=</span> <span class="mf">0.001</span><span class="p">,</span> <span class="n">rand_fraction</span> <span class="o">=</span> <span class="mf">0.</span><span class="p">,</span> <span class="n">hop_dist</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">l_constant</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span> <span class="n">truth_label_fn</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">use_truth_for_train</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">val_label_kwargs</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">balance_val</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The recommended constructor when not loading a saved </span>
+<span class="sd">        BFBLearner object.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        dm : DataManager</span>
+<span class="sd">            The DataManager object that will handle the generation and </span>
+<span class="sd">            processing of training and validation data.</span>
+
+<span class="sd">        n_layers : int</span>
+<span class="sd">            The number of layers of hidden layers in the neural network.</span>
+
+<span class="sd">        n_neurons : int</span>
+<span class="sd">            The number of neurons in each hidden layer.</span>
+
+<span class="sd">        metrics : list(BFBrain.ALMetric)</span>
+<span class="sd">            A list of objects which inherit from the abstract class </span>
+<span class="sd">            ALMetric. These will represent the performance metrics that </span>
+<span class="sd">            are tracked over each active learning iteration.</span>
+
+<span class="sd">        nlams : int</span>
+<span class="sd">            The number of sets of quartic potential coefficients to </span>
+<span class="sd">            generate to produce the initial training data.</span>
+
+<span class="sd">        nlams_val : int, optional</span>
+<span class="sd">            The number of sets of quartic potential coefficients to </span>
+<span class="sd">            generate to produce the validation data. If not specified, </span>
+<span class="sd">            the value 100*nlams is used.</span>
+
+<span class="sd">        learning_rate : float, default=0.001</span>
+<span class="sd">            The learning rate used for the Adam optimizer during neural </span>
+<span class="sd">            network training.</span>
+
+<span class="sd">        rand_fraction : float, default=0.</span>
+<span class="sd">            The percentage of points generated by DataManager&#39;s generate_L </span>
+<span class="sd">            function that are randomly sampled instead of sampled in the </span>
+<span class="sd">            vicinity of positively labelled points.</span>
+
+<span class="sd">        hop_dist : float, optional</span>
+<span class="sd">            The distance scale used to generate new training points in the </span>
+<span class="sd">            vicinity of existing bounded-from-below points, given as the </span>
+<span class="sd">            hop_dist argument to DataManager&#39;s generate_L function.</span>
+<span class="sd">            If not specified, the value is estimated using </span>
+<span class="sd">            BFBrain.Active_Learning._get_hop_dist</span>
+
+<span class="sd">        l_constant : float, default=0.1</span>
+<span class="sd">            The prior length scale for the neural network weights. The </span>
+<span class="sd">            neural network is constructed so that the prior distribution </span>
+<span class="sd">            on the weights is N(0, 1/l**2).</span>
+
+<span class="sd">        truth_label_fn : callable, optional</span>
+<span class="sd">            Must take a 1-D NumPy array representing a single set of </span>
+<span class="sd">            quartic coefficients and return a Boolean True if the </span>
+<span class="sd">            potential they describe is bounded from below, False otherwise.</span>
+<span class="sd">            If this argument is specified, the method will use this </span>
+<span class="sd">            callable to label the validation data set instead of </span>
+<span class="sd">            DataManager&#39;s oracle, and if use_truth_for_train is True, then </span>
+<span class="sd">            it will also use this function to label the initial training </span>
+<span class="sd">            data. This is used in specific instances when a fast symbolic </span>
+<span class="sd">            expression for the bounded-from-below constraints is known, </span>
+<span class="sd">            and the performance of the classifier training loop can be </span>
+<span class="sd">            evaluated in the absence of noise due to the approximate </span>
+<span class="sd">            labeller. Obviously the use case of the classifier is for </span>
+<span class="sd">            potentials where such a symbolic expression is NOT known, so </span>
+<span class="sd">            the real-world model building usefulness of this option </span>
+<span class="sd">            is limited.</span>
+
+<span class="sd">        use_truth_for_train : bool, default=False</span>
+<span class="sd">            If True, use truth_label_fn to label the initial training data </span>
+<span class="sd">            instead of the DataManager&#39;s oracle function. Has no effect </span>
+<span class="sd">            unless truth_label_fn is specified.</span>
+
+<span class="sd">        val_label_kwargs : dict, optional</span>
+<span class="sd">            An alternate set of keyword arguments for the oracle that can </span>
+<span class="sd">            be specified when labelling the validation data instead of </span>
+<span class="sd">            using the settings in the DataManager object. Useful if,</span>
+<span class="sd">            for example, a less expensive oracle can be used for the </span>
+<span class="sd">            validation labelling than for labelling the training data, or </span>
+<span class="sd">            if trying to gauge the effect of using a noisier oracle</span>
+<span class="sd">            during training while still verifying performance with </span>
+<span class="sd">            reliably labelled validation data.</span>
+
+<span class="sd">        balance_val : bool, default=False</span>
+<span class="sd">            If True, balance the validation data set between positive and </span>
+<span class="sd">            negative examples using DataManager&#39;s balance_array method, </span>
+<span class="sd">            making binary accuracy of the classifier more informative at </span>
+<span class="sd">            the cost of rendering the generating distribution for the </span>
+<span class="sd">            validation data considerably more opaque. Generally </span>
+<span class="sd">            recommended to leave False, since other performance metrics, </span>
+<span class="sd">            such as F score, can help gauge the classifier performance</span>
+<span class="sd">            without needing to rebalance the validation data.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Create the initial training data for the model to use.</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;creating training data...&#39;</span><span class="p">)</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">use_truth_for_train</span><span class="p">):</span>
+            <span class="n">data_train</span> <span class="o">=</span> <span class="n">dm</span><span class="o">.</span><span class="n">create_random_data</span><span class="p">(</span><span class="n">nlams</span><span class="p">,</span> <span class="n">validation</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">truth_label_fn</span> <span class="o">=</span> <span class="n">truth_label_fn</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">data_train</span> <span class="o">=</span> <span class="n">dm</span><span class="o">.</span><span class="n">create_random_data</span><span class="p">(</span><span class="n">nlams</span><span class="p">,</span> <span class="n">validation</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">hop_dist</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">hop_dist</span> <span class="o">=</span> <span class="n">_get_hop_dist</span><span class="p">(</span><span class="n">data_train</span><span class="p">,</span> <span class="n">dm</span><span class="o">.</span><span class="n">lam_len</span><span class="p">)</span>
+        <span class="n">dm</span><span class="o">.</span><span class="n">balance_array</span><span class="p">(</span><span class="n">data_train</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;done!&#39;</span><span class="p">)</span>
+        <span class="c1"># If we have any metrics that use validation data, also create a validation set.</span>
+        <span class="k">if</span> <span class="nb">any</span><span class="p">([</span><span class="n">metric</span><span class="o">.</span><span class="n">sc_type</span> <span class="o">==</span> <span class="s1">&#39;val&#39;</span> <span class="k">for</span> <span class="n">metric</span> <span class="ow">in</span> <span class="n">metrics</span><span class="p">]):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;creating validation data...&#39;</span><span class="p">)</span>
+            <span class="k">if</span><span class="p">(</span><span class="n">nlams_val</span><span class="o">==-</span><span class="mi">1</span><span class="p">):</span>
+                <span class="n">data_val</span> <span class="o">=</span> <span class="n">dm</span><span class="o">.</span><span class="n">create_random_data</span><span class="p">(</span><span class="mi">100</span><span class="o">*</span><span class="n">nlams</span><span class="p">,</span> <span class="n">validation</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">truth_label_fn</span> <span class="o">=</span> <span class="n">truth_label_fn</span><span class="p">,</span> <span class="n">label_kwargs</span> <span class="o">=</span> <span class="n">val_label_kwargs</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">data_val</span> <span class="o">=</span> <span class="n">dm</span><span class="o">.</span><span class="n">create_random_data</span><span class="p">(</span><span class="n">nlams_val</span><span class="p">,</span> <span class="n">validation</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">truth_label_fn</span> <span class="o">=</span> <span class="n">truth_label_fn</span><span class="p">,</span> <span class="n">label_kwargs</span> <span class="o">=</span> <span class="n">val_label_kwargs</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">balance_val</span><span class="p">:</span>
+                <span class="n">dm</span><span class="o">.</span><span class="n">balance_array</span><span class="p">(</span><span class="n">data_val</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;done!&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">data_val</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># Create the neural network.</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">create_seq_network</span><span class="p">(</span><span class="n">dm</span><span class="o">.</span><span class="n">lam_len</span><span class="p">,</span> <span class="n">n_layers</span><span class="p">,</span> <span class="n">n_neurons</span><span class="p">,</span> <span class="n">l_constant</span><span class="p">,</span> <span class="n">data_train</span><span class="o">.</span><span class="n">n_elements</span><span class="p">())</span>
+        <span class="c1"># Set up a dictionary of some keyword arguments needed to initialize the class.</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">learning_rate</span> <span class="o">=</span> <span class="n">learning_rate</span><span class="p">,</span> <span class="n">hop_dist</span> <span class="o">=</span> <span class="n">hop_dist</span><span class="p">,</span> <span class="n">rand_fraction</span> <span class="o">=</span> <span class="n">rand_fraction</span><span class="p">,</span> <span class="n">idx</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">l_constant</span> <span class="o">=</span> <span class="n">l_constant</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">dm</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">data_train</span><span class="p">,</span> <span class="n">data_val</span><span class="p">,</span> <span class="n">metrics</span><span class="p">,</span> <span class="n">AL_history</span><span class="p">(),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_compile_model</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;A helper function that simply recompiles the model.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">optimizer</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">learning_rate</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">learning_rate</span><span class="p">),</span> <span class="n">loss</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">losses</span><span class="o">.</span><span class="n">BinaryCrossentropy</span><span class="p">(</span><span class="n">from_logits</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>  <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">BinaryAccuracy</span><span class="p">(),</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">FalsePositives</span><span class="p">(),</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">FalseNegatives</span><span class="p">()])</span>
+    
+    <span class="k">def</span> <span class="nf">_update_regularizers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">reinitialize_weights</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;A function to update the neural network for a new round of </span>
+<span class="sd">        training. Changes the weight decay constants to ensure the prior </span>
+<span class="sd">        weight distribution is given by the weight prior length scale and, </span>
+<span class="sd">        if the flag is set for it, will also randomize the model weights.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        l : float</span>
+<span class="sd">            The new prior length scale.</span>
+
+<span class="sd">        N : int</span>
+<span class="sd">            The number of elements in the training data.</span>
+
+<span class="sd">        reinitialize_weights : bool</span>
+<span class="sd">            If True, randomize model weights after updating the network&#39;s </span>
+<span class="sd">            hyperparameters. If False, the model weights are maintained, </span>
+<span class="sd">            but the weight decay constants are still changed.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">n_layers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_count_layers</span><span class="p">()</span>
+        <span class="n">new_model</span> <span class="o">=</span> <span class="n">create_seq_network</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dm</span><span class="o">.</span><span class="n">lam_len</span><span class="p">,</span> <span class="n">n_layers</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">get_weights</span><span class="p">()[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">])[</span><span class="mi">0</span><span class="p">],</span> <span class="n">l</span><span class="p">,</span> <span class="n">N</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">reinitialize_weights</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">layer</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">new_model</span><span class="o">.</span><span class="n">layers</span><span class="p">):</span>
+                <span class="n">layer</span><span class="o">.</span><span class="n">set_weights</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">get_weights</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">new_model</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">backend</span><span class="o">.</span><span class="n">clear_session</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_compile_model</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_count_layers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Counts the number of hidden layers in the neural network, by </span>
+<span class="sd">        counting the number of ConcreteDenseDropout layers.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">layers</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">layer</span><span class="p">,</span> <span class="s1">&#39;p_logit&#39;</span><span class="p">):</span>
+                <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">i</span>
+
+<div class="viewcode-block" id="BFBLearner.set_l_constant">
+<a class="viewcode-back" href="../../bfbrain.html#bfbrain.BFB_Learner.BFBLearner.set_l_constant">[docs]</a>
+    <span class="k">def</span> <span class="nf">set_l_constant</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">l_constant</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Sets the weight prior length scale l to a new value and updates </span>
+<span class="sd">        the network to reflect it.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        l_constant : float</span>
+<span class="sd">            The new value for the class attribute l_constant, the weight </span>
+<span class="sd">            prior length scale.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">l_constant</span> <span class="o">=</span> <span class="n">l_constant</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_regularizers</span><span class="p">(</span><span class="n">l_constant</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_train</span><span class="o">.</span><span class="n">n_elements</span><span class="p">(),</span> <span class="n">reinitialize_weights</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_save_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath</span><span class="p">,</span> <span class="n">save_val</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Saves the training (and, if the flag is specified, </span>
+<span class="sd">        the validation) data of the BFBLearner object for continuity </span>
+<span class="sd">        between runs.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        filepath : str</span>
+<span class="sd">            A string which describes the name of the file to which the </span>
+<span class="sd">            data should be saved.</span>
+
+<span class="sd">        save_val : bool</span>
+<span class="sd">            If True, save both the training data and the validation data. </span>
+<span class="sd">            If False, save only the training data.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_train</span><span class="o">.</span><span class="n">save_data</span><span class="p">(</span><span class="n">filepath</span><span class="o">+</span><span class="s1">&#39;_train&#39;</span><span class="p">)</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">save_val</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_val</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data_val</span><span class="o">.</span><span class="n">save_data</span><span class="p">(</span><span class="n">filepath</span><span class="o">+</span><span class="s1">&#39;_val&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_kwargs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;A helper function which returns a dictionary with all of the </span>
+<span class="sd">        variable attributes needed to reconstitute the model.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="n">learning_rate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">learning_rate</span><span class="p">,</span> <span class="n">hop_dist</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">hop_dist</span><span class="p">,</span> <span class="n">rand_fraction</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rand_fraction</span><span class="p">,</span> <span class="n">idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">idx</span><span class="p">,</span> <span class="n">l_constant</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">l_constant</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">_save_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;A method to save the values of some miscellaneous variables in </span>
+<span class="sd">        the active learning class.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        filepath : str</span>
+<span class="sd">            A string which describes the name of the file to which the </span>
+<span class="sd">            data should be saved.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_kwargs</span><span class="p">()</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filepath</span><span class="o">+</span><span class="s1">&#39;.pickle&#39;</span><span class="p">,</span> <span class="n">mode</span> <span class="o">=</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">kwargs</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">_print_variables</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;A method to print out the miscellaneous variables of the </span>
+<span class="sd">        BFBLearner object into the output file </span>
+<span class="sd">        (or the console, if no file path is specified).</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        filepath : str, optional</span>
+<span class="sd">            If specified, write the variables to a file &#39;output.txt&#39; in </span>
+<span class="sd">            the directory specified by the string. If not specified, the </span>
+<span class="sd">            method will print out the variables to the console.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_kwargs</span><span class="p">()</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">filepath</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filepath</span><span class="o">+</span><span class="s1">&#39;/output.txt&#39;</span><span class="p">,</span> <span class="s1">&#39;a&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">kwargs</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">f</span><span class="p">)</span>
+
+<div class="viewcode-block" id="BFBLearner.save_AL_state">
+<a class="viewcode-back" href="../../bfbrain.html#bfbrain.BFB_Learner.BFBLearner.save_AL_state">[docs]</a>
+    <span class="k">def</span> <span class="nf">save_AL_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">directory</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;A method for saving all the relevant states for the BFBLearner </span>
+<span class="sd">        object in a directory for later retrieval.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        directory : str</span>
+<span class="sd">            A string denoting a directory to which the data needed to </span>
+<span class="sd">            reconstruct the BFBLearner object will be saved.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1">#If the directory doesn&#39;t already exist, create it</span>
+        <span class="k">if</span><span class="p">(</span><span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">directory</span><span class="p">)):</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">directory</span><span class="p">)</span>
+        <span class="c1">#save the training and validation data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_save_data</span><span class="p">(</span><span class="n">directory</span><span class="o">+</span><span class="s1">&#39;/data&#39;</span><span class="p">,</span> <span class="n">save_val</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+        <span class="c1">#save the DataManager object</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">directory</span> <span class="o">+</span> <span class="s1">&#39;/dm.pickle&#39;</span><span class="p">,</span> <span class="n">mode</span> <span class="o">=</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dm</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+        <span class="c1">#save the model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">directory</span><span class="o">+</span><span class="s1">&#39;/model&#39;</span><span class="p">)</span>
+        <span class="c1">#save the history object</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">directory</span><span class="o">+</span><span class="s1">&#39;/history.pickle&#39;</span><span class="p">,</span> <span class="n">mode</span> <span class="o">=</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">history</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">directory</span><span class="o">+</span><span class="s1">&#39;/metrics.pickle&#39;</span><span class="p">,</span> <span class="n">mode</span> <span class="o">=</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+        <span class="c1">#Save the other class variables.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_save_variables</span><span class="p">(</span><span class="n">directory</span><span class="o">+</span><span class="s1">&#39;/variables&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="BFBLearner.redefine_model">
+<a class="viewcode-back" href="../../bfbrain.html#bfbrain.BFB_Learner.BFBLearner.redefine_model">[docs]</a>
+    <span class="k">def</span> <span class="nf">redefine_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_layers</span><span class="p">,</span> <span class="n">n_neurons</span><span class="p">,</span> <span class="n">l</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">learning_rate</span> <span class="o">=</span> <span class="mf">0.001</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;A method for redefining the parameters of the neural network. </span>
+<span class="sd">        Should ONLY be called if the neural network is entirely untrained.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        n_layers : int</span>
+<span class="sd">            The number of hidden layers of neurons to include in the </span>
+<span class="sd">            model. Generally recommended to be O(a few).</span>
+
+<span class="sd">        n_neurons : int</span>
+<span class="sd">            The number of neurons in each hidden layer. </span>
+<span class="sd">            Recommended to be O(100).</span>
+
+<span class="sd">        l : float, optional</span>
+<span class="sd">            The prior length scale parameter of the neural network. </span>
+<span class="sd">            Weights have a prior distribution of N(0, 1/l**2).</span>
+<span class="sd">            If l isn&#39;t specified, the BFBLearner object&#39;s current</span>
+<span class="sd">            value for the parameter is used.</span>
+
+<span class="sd">        learning_rate : float, default=0.001</span>
+<span class="sd">            The learning rate of the Adam optimizer for neural network </span>
+<span class="sd">            training.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">idx</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;WARNING: This method will reset the neural network, but NOT the training data or the neural network random seed. Do NOT call with a partially trained network unless you want your results to not be reproducible!&#39;</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">backend</span><span class="o">.</span><span class="n">clear_session</span><span class="p">()</span>
+
+        <span class="c1"># If l isn&#39;t specified, set it to the BFBLearner&#39;s current value.</span>
+        <span class="c1"># Otherwise set the BFBLearner&#39;s value to the new l.</span>
+        <span class="k">if</span> <span class="n">l</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">l</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">l_constant</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">l_constant</span> <span class="o">=</span> <span class="n">l</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">create_seq_network</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dm</span><span class="o">.</span><span class="n">lam_len</span><span class="p">,</span> <span class="n">n_layers</span><span class="p">,</span> <span class="n">n_neurons</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_train</span><span class="o">.</span><span class="n">n_elements</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">learning_rate</span> <span class="o">=</span> <span class="n">learning_rate</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_compile_model</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">idx</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">history</span> <span class="o">=</span> <span class="n">AL_history</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">metric</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">:</span>
+            <span class="n">metric</span><span class="o">.</span><span class="n">reset_data</span><span class="p">()</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_get_L_probabilities</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="n">score_fn</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">,</span> <span class="n">probability_weighting</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;A function which, given a 2-D NumPy array of quartic potential </span>
+<span class="sd">        coefficients L, will return probability weights based on score_fn </span>
+<span class="sd">        for sampling in the vicinity of these points as part of generating </span>
+<span class="sd">        new training set points.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        L : np.array(np.float32, np.float32)</span>
+<span class="sd">            A 2-D NumPy array representing sets of quartic coefficients </span>
+<span class="sd">            for the potential.</span>
+
+<span class="sd">        score_fn : callable</span>
+<span class="sd">            A callable which takes a model and a 2-D tensor as inputs, </span>
+<span class="sd">            and outputs some sort of scalar score for each input.</span>
+
+<span class="sd">        batch_size : int</span>
+<span class="sd">            The size of a batch of L elements that the program will </span>
+<span class="sd">            consider simultaneously.</span>
+
+<span class="sd">        probability_weighting : bool</span>
+<span class="sd">            If True, the function will output a 1-D array of probabilities </span>
+<span class="sd">            corresponding to each point in L, by weighting each point </span>
+<span class="sd">            quartically according to its score_fn score. If False,</span>
+<span class="sd">            returns None, which instructs the program to use a uniform </span>
+<span class="sd">            probability.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.array(np.float32) or None</span>
+<span class="sd">            Return value represents the probability weighting for </span>
+<span class="sd">            different points in L to be sampled near when generating </span>
+<span class="sd">            candidate pools to be potentially added to the training set. </span>
+<span class="sd">            If return value is None, then the active learning algorithm </span>
+<span class="sd">            assumes uniform probability for all points.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">probability_weighting</span><span class="p">:</span>
+            <span class="n">L_ds</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">Dataset</span><span class="o">.</span><span class="n">from_tensor_slices</span><span class="p">(</span><span class="n">L</span><span class="p">)</span><span class="o">.</span><span class="n">batch</span><span class="p">(</span><span class="n">batch_size</span><span class="p">)</span>
+            <span class="n">out_scores</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">L_ds</span><span class="p">:</span>
+                <span class="n">out_scores</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">score_fn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+            <span class="n">out_scores</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">out_scores</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">out_scores</span><span class="p">)</span><span class="o">==</span><span class="mf">0.</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span>
+            <span class="k">return</span> <span class="n">out_scores</span><span class="o">**</span><span class="mi">4</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">out_scores</span><span class="o">**</span><span class="mi">4</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+
+    <span class="k">def</span> <span class="nf">_generate_K</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="n">numK</span><span class="p">,</span> <span class="n">score_fn</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;A function to select new points K to be included in the next </span>
+<span class="sd">        training iteration, given a sample pool L.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        L : tf.Tensor(tf.float32, tf.float32)</span>
+<span class="sd">            A 2-D Tensorflow tensor representing sets of quartic </span>
+<span class="sd">            coefficients for the potential.</span>
+
+<span class="sd">        numK : int</span>
+<span class="sd">            The number of points to select from L to pass on for labelling </span>
+<span class="sd">            and inclusion in the training data.</span>
+
+<span class="sd">        score_fn : callable</span>
+<span class="sd">            A callable which scores points in L. The points with the </span>
+<span class="sd">            highest scores will be gathered and returned for labelling. </span>
+<span class="sd">            The function must have a signature </span>
+<span class="sd">            (tf.keras.model, tf.tensor(tf.float32, tf.float32))-&gt; tf.tensor(tf.float32). </span>
+<span class="sd">            By default, the function AL_loop scores points based on </span>
+<span class="sd">            mutual information, but the user can specify any other </span>
+<span class="sd">            function of the appropriate signature should they so choose.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        tf.Tensor(tf.float32, tf.float32)</span>
+<span class="sd">            A 2-D Tensorflow tensor representing sets of quartic </span>
+<span class="sd">            coefficients for the potential, specifically numK entries in L </span>
+<span class="sd">            of which the model is most uncertain.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">score_fn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">L</span><span class="p">)</span>
+        <span class="c1"># Select the top numK points (ranked by their score given by result), and return them.</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">indices</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">top_k</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">k</span> <span class="o">=</span> <span class="n">numK</span><span class="p">,</span> <span class="nb">sorted</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span>
+
+        <span class="c1"># For metrics that require evaluation of the points proposed in the pool of candidates, record these metrics here.</span>
+        <span class="k">for</span> <span class="n">metric</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">metric</span><span class="o">.</span><span class="n">sc_type</span> <span class="o">==</span> <span class="s1">&#39;pool&#39;</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">metric</span><span class="p">,</span> <span class="s1">&#39;score_fn&#39;</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">metric</span><span class="o">.</span><span class="n">score_fn</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">==</span> <span class="n">score_fn</span><span class="o">.</span><span class="vm">__name__</span><span class="p">:</span>
+                    <span class="n">metric</span><span class="o">.</span><span class="n">record_batch</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">metric</span><span class="o">.</span><span class="n">record_batch</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">L</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">metric</span><span class="o">.</span><span class="n">sc_type</span> <span class="o">==</span> <span class="s1">&#39;pool&#39;</span><span class="p">:</span>
+                <span class="n">metric</span><span class="o">.</span><span class="n">record_batch</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">L</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+    
+    <span class="k">def</span> <span class="nf">_generate_K_batched</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">K_num</span><span class="p">,</span> <span class="n">K_batches</span><span class="p">,</span> <span class="n">K_factor</span><span class="p">,</span> <span class="n">L_input</span><span class="p">,</span> <span class="n">score_fn</span><span class="p">,</span> <span class="n">prob_score_fn</span><span class="p">,</span> <span class="n">truth_label_fn</span><span class="p">,</span> <span class="n">probability_weighting</span><span class="p">,</span> <span class="n">verbose</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;A function to perform the function _generate_K in batches, to </span>
+<span class="sd">        save on GPU memory and shorten execution time. Then returns an </span>
+<span class="sd">        np_data object containing the labelled points K to be added to </span>
+<span class="sd">        the training set.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        K_num : int</span>
+<span class="sd">            The number of sets of quartic coefficients each individual </span>
+<span class="sd">            run of _generate_K should produce.</span>
+
+<span class="sd">        K_batches : int</span>
+<span class="sd">            The total number of runs of _generate_K that the function </span>
+<span class="sd">            should perform.</span>
+
+<span class="sd">        K_factor : int </span>
+<span class="sd">            To generate each batch of K_batch_size entries, K_factor*K_num </span>
+<span class="sd">            candidate points are generated and the top K_num points are </span>
+<span class="sd">            selected to be added to K.</span>
+
+<span class="sd">        L_input : np.array(np.float32, np.float32)</span>
+<span class="sd">            A 2-D NumPy array of sets of quartic coefficients of the </span>
+<span class="sd">            potential that will be used to generate the pool of points </span>
+<span class="sd">            that will be considered for addition to the training set.</span>
+
+<span class="sd">        score_fn : callable</span>
+<span class="sd">            A function that scores a batch of points given an input model, </span>
+<span class="sd">            used in _generate_K. See _generate_K for more information.</span>
+
+<span class="sd">        prob_score_fn : callable</span>
+<span class="sd">            A function of the same signature as score_fn (but not </span>
+<span class="sd">            necessarily the same function). If the probability_weighting </span>
+<span class="sd">            flag is True, this function will be used to evaluate which </span>
+<span class="sd">            points in L_input should be sampled around most frequently </span>
+<span class="sd">            when constructing the new training data.</span>
+
+<span class="sd">        truth_label_fn : callable, optional</span>
+<span class="sd">            If a callable, must take a 1-D NumPy array representing a </span>
+<span class="sd">            single set of quartic coefficients and return a Boolean True </span>
+<span class="sd">            if the potential they describe is bounded from below, False </span>
+<span class="sd">            otherwise. If specified, training data will be labelled using </span>
+<span class="sd">            this callable instead of the oracle in the DataManager object.</span>
+
+<span class="sd">        probability_weighting : bool</span>
+<span class="sd">            If True, weight the probability of selecting certain points </span>
+<span class="sd">            in L_input to sample around over others, based on their </span>
+<span class="sd">            evaluation with prob_score_fn. If False, sample all points in </span>
+<span class="sd">            L_input uniformly.</span>
+
+<span class="sd">        verbose : bool</span>
+<span class="sd">            If True, print statements about the progress of the function.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np_data</span>
+<span class="sd">            An np_data object holding the labelled sets of quartic </span>
+<span class="sd">            coefficients to be added to the training set.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">L_probs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_L_probabilities</span><span class="p">(</span><span class="n">L_input</span><span class="p">,</span> <span class="n">prob_score_fn</span><span class="p">,</span> <span class="n">batch_size</span> <span class="o">=</span> <span class="n">K_factor</span><span class="o">*</span><span class="n">K_num</span><span class="p">,</span> <span class="n">probability_weighting</span> <span class="o">=</span> <span class="n">probability_weighting</span><span class="p">)</span>
+        <span class="c1"># Execute _generate_K K_num times.</span>
+        <span class="n">K_points</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_K</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dm</span><span class="o">.</span><span class="n">generate_L</span><span class="p">(</span><span class="n">K_factor</span><span class="o">*</span><span class="n">K_num</span><span class="p">,</span> <span class="n">L_input</span><span class="p">,</span> <span class="n">hop_dist</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hop_dist</span><span class="p">,</span> <span class="n">probs</span> <span class="o">=</span> <span class="n">L_probs</span><span class="p">,</span> <span class="n">rand_fraction</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rand_fraction</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span> <span class="n">K_num</span><span class="p">,</span> <span class="n">score_fn</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">K_batches</span><span class="p">):</span>
+            <span class="n">K_points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">K_points</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_K</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dm</span><span class="o">.</span><span class="n">generate_L</span><span class="p">(</span><span class="n">K_factor</span><span class="o">*</span><span class="n">K_num</span><span class="p">,</span> <span class="n">L_input</span><span class="p">,</span> <span class="n">hop_dist</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hop_dist</span><span class="p">,</span> <span class="n">probs</span> <span class="o">=</span> <span class="n">L_probs</span><span class="p">,</span> <span class="n">rand_fraction</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rand_fraction</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span> <span class="n">K_num</span><span class="p">,</span> <span class="n">score_fn</span><span class="p">)),</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">verbose</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Generated K, now labelling it...&#39;</span><span class="p">)</span>
+        <span class="c1">#Label the K points.</span>
+        <span class="n">K_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dm</span><span class="o">.</span><span class="n">create_data</span><span class="p">(</span><span class="n">K_points</span><span class="p">,</span> <span class="n">truth_label_fn</span><span class="p">)</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">verbose</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Successfully created an additional training sample of &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">K_num</span><span class="o">*</span><span class="n">K_batches</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39; points in parameter space&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">K_data</span>
+    
+    <span class="k">def</span> <span class="nf">_balance_with_positives</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">K_num</span><span class="p">,</span> <span class="n">K_factor</span><span class="p">,</span> <span class="n">score_fn</span><span class="p">,</span> <span class="n">verbose</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;A function which will balance the number of negative and </span>
+<span class="sd">        positive elements in data_train by exploiting the convexity </span>
+<span class="sd">        of the set of all positive points. Can be used periodically if </span>
+<span class="sd">        the overwhelming majority of newly generated points are </span>
+<span class="sd">        negatively labelled.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        K_num : int</span>
+<span class="sd">            The number of sets of quartic coefficients each individual </span>
+<span class="sd">            run of _generate_K should produce.</span>
+
+<span class="sd">        K_factor : int</span>
+<span class="sd">            To generate each batch of K_num entries, K_factor*K_num </span>
+<span class="sd">            candidate points are generated and the top K_batch_size </span>
+<span class="sd">            points are selected to be added to K.</span>
+
+<span class="sd">        score_fn : callable</span>
+<span class="sd">            A function that scores a batch of points given an input model, </span>
+<span class="sd">            used in _generate_K. See _generate_K for more information.</span>
+
+<span class="sd">        verbose : bool</span>
+<span class="sd">            If True, print statements about the progress of the function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># First, determine how many batches of results need to be added to (approximately) balance the array.</span>
+        <span class="n">num_batches</span> <span class="o">=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_train</span><span class="o">.</span><span class="n">neg</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_train</span><span class="o">.</span><span class="n">pos</span><span class="p">))</span> <span class="o">//</span> <span class="n">K_num</span>
+        <span class="c1"># If we have more negative points than positives (or the array is already approximately balanced), the rebalancing technique here won&#39;t work, and therefore the method will exit without doing anything.</span>
+        <span class="k">if</span> <span class="n">num_batches</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">verbose</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;generating new positive points to rebalance the training data...&#39;</span><span class="p">)</span>
+        <span class="n">K_points</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_K</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dm</span><span class="o">.</span><span class="n">_create_new_positives</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_train</span><span class="o">.</span><span class="n">pos</span><span class="p">,</span> <span class="n">K_factor</span><span class="o">*</span><span class="n">K_num</span><span class="p">),</span> <span class="n">dtype</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span> <span class="n">K_num</span><span class="p">,</span> <span class="n">score_fn</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">num_batches</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">K_points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">K_points</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_K</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dm</span><span class="o">.</span><span class="n">_create_new_positives</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_train</span><span class="o">.</span><span class="n">pos</span><span class="p">,</span> <span class="n">K_factor</span><span class="o">*</span><span class="n">K_num</span><span class="p">),</span> <span class="n">dtype</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span> <span class="n">K_num</span><span class="p">,</span> <span class="n">score_fn</span><span class="p">)),</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_train</span><span class="o">.</span><span class="n">append_data</span><span class="p">(</span><span class="n">np_data</span><span class="p">(</span><span class="n">K_points</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([])))</span> 
+    
+    <span class="k">def</span> <span class="nf">_create_output_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;A method to create the output file for recording results. </span>
+<span class="sd">        Includes information about the architecture of the neural network.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        filepath : str</span>
+<span class="sd">            A string denoting the directory to which the output should be </span>
+<span class="sd">            recorded.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filepath</span><span class="o">+</span><span class="s1">&#39;/output.txt&#39;</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">summary</span><span class="p">(</span><span class="n">print_fn</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="nb">print</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">f</span><span class="p">))</span>
+    
+    <span class="k">def</span> <span class="nf">_print_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ind</span><span class="p">,</span> <span class="n">filepath</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;A method to print certain status variables to an output file or </span>
+<span class="sd">        to the console.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        ind : int</span>
+<span class="sd">            The number of training rounds (full active learning cycles) </span>
+<span class="sd">            the neural network has currently undergone.</span>
+
+<span class="sd">        filepath : str, optional</span>
+<span class="sd">            A string specifying where the information should be saved. </span>
+<span class="sd">            If not specified, print the data to the console.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">filepath</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Metrics for round </span><span class="si">{}</span><span class="s1">:&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ind</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">metric</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">:</span>
+                <span class="n">metric</span><span class="o">.</span><span class="n">print_status</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filepath</span><span class="o">+</span><span class="s1">&#39;/output.txt&#39;</span><span class="p">,</span> <span class="s1">&#39;a&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Metrics for round </span><span class="si">{}</span><span class="s1">:&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ind</span><span class="p">),</span> <span class="n">file</span> <span class="o">=</span> <span class="n">f</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">metric</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">:</span>
+                    <span class="n">metric</span><span class="o">.</span><span class="n">print_status</span><span class="p">(</span><span class="n">file</span> <span class="o">=</span> <span class="n">f</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ind</span><span class="p">,</span> <span class="n">filepath</span><span class="p">,</span> <span class="n">verbose</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;A method to find the current status variables (for the </span>
+<span class="sd">        performance metrics) and print them to a file (and possibly </span>
+<span class="sd">        to the console). </span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        ind : int</span>
+<span class="sd">            The number of training rounds (full active learning cycles) </span>
+<span class="sd">            the neural network has currently undergone.</span>
+
+<span class="sd">        filepath : str</span>
+<span class="sd">            A string specifying where the information should be saved.</span>
+
+<span class="sd">        verbose : bool, default=False</span>
+<span class="sd">            If True, print the performance metric statuses found with </span>
+<span class="sd">            this method to the console in addition to saving it.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">verbose</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_print_status</span><span class="p">(</span><span class="n">ind</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_print_status</span><span class="p">(</span><span class="n">ind</span><span class="p">,</span> <span class="n">filepath</span><span class="o">=</span><span class="n">filepath</span><span class="p">)</span>
+    
+<div class="viewcode-block" id="BFBLearner.add_metrics">
+<a class="viewcode-back" href="../../bfbrain.html#bfbrain.BFB_Learner.BFBLearner.add_metrics">[docs]</a>
+    <span class="k">def</span> <span class="nf">add_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metrics</span><span class="p">,</span> <span class="n">nlams_val</span> <span class="o">=</span> <span class="mi">100000</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;add new metrics to the BFBLearner instance after </span>
+<span class="sd">        initialization. Appends any metric or list of metrics specified </span>
+<span class="sd">        to self.metrics. If an added metric involves measuring the </span>
+<span class="sd">        classifier performance on a validation set, and the ActiveLearning </span>
+<span class="sd">        instance doesn&#39;t have a validation set yet, this method will </span>
+<span class="sd">        generate one.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        metrics : ALMetric or list of ALMetrics</span>
+<span class="sd">            A metric or list of objects which inherit from the </span>
+<span class="sd">            BFBrain.ALMetric abstract class.</span>
+
+<span class="sd">        nlams_val : int, default=100000</span>
+<span class="sd">            The number of points to be created and labelled to produce a </span>
+<span class="sd">            validation set, if a new validation set needs to be generated.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">idx</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;Warning: Adding a metric after already performing some active learning iterations will result in the metric not recording its values for the iterations already completed.&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">metrics</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span> <span class="o">+</span> <span class="n">metrics</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span> <span class="o">+</span> <span class="p">[</span><span class="n">metrics</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_for_val_metrics</span><span class="p">(</span><span class="n">nlams_val</span><span class="p">)</span></div>
+
+    
+    <span class="k">def</span> <span class="nf">_check_for_val_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nlams_val</span> <span class="o">=</span> <span class="mi">100000</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;A helper function which determines if a validation set needs to </span>
+<span class="sd">        be created, given the metrics in self.metrics, and creates that </span>
+<span class="sd">        set if it doesn&#39;t exist.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        nlams_val : int, default=100000</span>
+<span class="sd">            The number of points to be created and labelled to produce a </span>
+<span class="sd">            validation set, if a validation set needs to be generated.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">metric</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">metric</span><span class="o">.</span><span class="n">sc_type</span> <span class="o">==</span> <span class="s1">&#39;val&#39;</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_val</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">data_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dm</span><span class="o">.</span><span class="n">create_random_data</span><span class="p">(</span><span class="n">nlams_val</span><span class="p">,</span> <span class="n">validation</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">dm</span><span class="o">.</span><span class="n">balance_array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_val</span><span class="p">)</span>
+
+<div class="viewcode-block" id="BFBLearner.plot_metrics">
+<a class="viewcode-back" href="../../bfbrain.html#bfbrain.BFB_Learner.BFBLearner.plot_metrics">[docs]</a>
+    <span class="k">def</span> <span class="nf">plot_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;A method to plot all metrics being recorded in the </span>
+<span class="sd">        BFBLearner&#39;s metrics object.</span>
+
+<span class="sd">        Parameter</span>
+<span class="sd">        ---------</span>
+<span class="sd">        filepath : str, optional</span>
+<span class="sd">            If specified, the method will save the plots to the folder </span>
+<span class="sd">            specified in filepath (provided that folder exists). If not </span>
+<span class="sd">            specified, simply prints the plots to the console.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">metric</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">:</span>
+            <span class="n">metric</span><span class="o">.</span><span class="n">plot_metric</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="BFBLearner.get_calibration_uncertainties">
+<a class="viewcode-back" href="../../bfbrain.html#bfbrain.BFB_Learner.BFBLearner.get_calibration_uncertainties">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_calibration_uncertainties</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">score_fn</span><span class="p">,</span> <span class="n">nlams</span> <span class="o">=</span> <span class="mi">1000000</span><span class="p">,</span> <span class="n">n_trials</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">batch_size</span> <span class="o">=</span> <span class="mi">200000</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;A function which gets a sense of the range of uncertainty </span>
+<span class="sd">        values (and what constitutes a highly uncertain point). It does </span>
+<span class="sd">        this by creating a large sample of unlabelled data points by </span>
+<span class="sd">        uniformly sampling the unit hypersphere, and getting the outputs </span>
+<span class="sd">        of a specified uncertainty score over the points in the </span>
+<span class="sd">        distribution which the model predicts to be positive.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        score_fn : {&#39;BALD&#39;, &#39;MaxEntropy&#39;, &#39;variation_ratios&#39;, &#39;random&#39;, &#39;QBDC&#39;, &#39;predictive_variance&#39;} or callable</span>
+<span class="sd">            Either a string which denotes which of the implemented </span>
+<span class="sd">            strategies for scoring points to add to the training set to </span>
+<span class="sd">            employ, or a callable representing a custom function to </span>
+<span class="sd">            perform this role. Any custom functions must have a signature </span>
+<span class="sd">            (tf.keras.model, tf.tensor(tf.float32, tf.float32))-&gt; tf.tensor(tf.float32) </span>
+<span class="sd">            or (tf.keras.model, tf.tensor(tf.float32, tf.float32), int)-&gt; tf.tensor(tf.float32), </span>
+<span class="sd">            depending on whether n_trials is specified or not. The string </span>
+<span class="sd">            inputs correspond to scoring based on, in order: </span>
+<span class="sd">            Mutual information, Shannon entropy, variation ratios, a </span>
+<span class="sd">            random score, query by dropout committee (QBDC), and standard</span>
+<span class="sd">            deviation of the neural network predictions.</span>
+<span class="sd">        </span>
+<span class="sd">        nlams : int, default=1000000</span>
+<span class="sd">            The number of sets of quartic potential coefficients that the </span>
+<span class="sd">            method should generate</span>
+
+<span class="sd">        n_trials : int, optional</span>
+<span class="sd">            Many of the implemented score_fn methods (&#39;BALD&#39;, </span>
+<span class="sd">            &#39;MaxEntropy&#39;, &#39;variation_ratios&#39;, &#39;QBDC&#39;, and </span>
+<span class="sd">            &#39;predictive_variance&#39;) have an optional argument controlling </span>
+<span class="sd">            the number of forward passes through the network to compute </span>
+<span class="sd">            their values. This parameter allows this value to be specified </span>
+<span class="sd">            for score_fn&#39;s evaluations.</span>
+
+<span class="sd">        batch_size : int, default=200000</span>
+<span class="sd">            The size of batches of the elements of lams that are </span>
+<span class="sd">            transferred to the GPU simultaneously. </span>
+<span class="sd">            If OOM errors are encountered, it is recommended to reduce </span>
+<span class="sd">            batch_size.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Determine how to select additional points to add to the training set based on the input of score_fn.</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">callable</span><span class="p">(</span><span class="n">score_fn</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">score_fn</span> <span class="o">=</span> <span class="n">scoring_funcs</span><span class="p">[</span><span class="n">score_fn</span><span class="p">]</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;score_fn must be a callable or one of the strings </span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">scoring_funcs</span><span class="o">.</span><span class="n">keys</span><span class="p">())))</span>
+
+        <span class="k">if</span> <span class="n">n_trials</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">score_fn</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">function</span><span class="p">(</span><span class="n">partial</span><span class="p">(</span><span class="n">score_fn</span><span class="p">,</span> <span class="n">n_trials</span> <span class="o">=</span> <span class="n">n_trials</span><span class="p">),</span> <span class="n">jit_compile</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+            <span class="n">MC_call</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">MC_call_fast</span><span class="p">,</span> <span class="n">n_trials</span> <span class="o">=</span> <span class="n">n_trials</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">score_fn</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">function</span><span class="p">(</span><span class="n">score_fn</span><span class="p">,</span> <span class="n">jit_compile</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+            <span class="n">MC_call</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">MC_call_fast</span><span class="p">,</span> <span class="n">n_trials</span> <span class="o">=</span> <span class="mi">100</span><span class="p">)</span>
+
+        <span class="c1"># Create a new set of nlams random quartic coefficients.</span>
+        <span class="n">lams</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dm</span><span class="o">.</span><span class="n">create_random_lambdas</span><span class="p">(</span><span class="n">nlams</span><span class="p">,</span> <span class="n">validation</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">Dataset</span><span class="o">.</span><span class="n">from_tensor_slices</span><span class="p">(</span><span class="n">lams</span><span class="p">)</span><span class="o">.</span><span class="n">batch</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">num_parallel_calls</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">AUTOTUNE</span><span class="p">)</span><span class="o">.</span><span class="n">prefetch</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">AUTOTUNE</span><span class="p">)</span><span class="o">.</span><span class="n">cache</span><span class="p">()</span>
+
+        <span class="c1"># Find the uncertainty scores on lams</span>
+        <span class="n">out_score</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">out_pred</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+            <span class="n">out_score</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">score_fn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+            <span class="n">out_pred</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">MC_call</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+
+        <span class="n">out_score</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">out_score</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">out_pred</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">out_pred</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">out_score</span><span class="p">[</span><span class="n">out_pred</span> <span class="o">&gt;=</span> <span class="mf">0.5</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="BFBLearner.AL_loop">
+<a class="viewcode-back" href="../../bfbrain.html#bfbrain.BFB_Learner.BFBLearner.AL_loop">[docs]</a>
+    <span class="k">def</span> <span class="nf">AL_loop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath</span> <span class="o">=</span> <span class="s1">&#39;saved_AL&#39;</span><span class="p">,</span> <span class="n">K_batch_size</span> <span class="o">=</span> <span class="mi">500</span><span class="p">,</span> <span class="n">K_batch_num</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span> <span class="n">K_factor</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span> <span class="n">score_fn</span> <span class="o">=</span> <span class="s1">&#39;BALD&#39;</span><span class="p">,</span> <span class="n">nstop</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span> <span class="n">full_train_interval</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">epoch_patience</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">epoch_limit</span><span class="o">=</span><span class="mi">20000</span><span class="p">,</span> <span class="n">batch_size</span> <span class="o">=</span> <span class="mi">200000</span><span class="p">,</span> <span class="n">val_batch_size</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+               <span class="n">save_interval</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span> <span class="n">stopping_cond</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">prob_score_fn</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">truth_label_fn</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">score_ntrials</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">prob_score_ntrials</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">reinitialize_weights</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+                 <span class="n">rebalance_train_data</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">L_probability_weighting</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">plot_metrics</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">verbose</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The core function for the active learning loop. Performs active </span>
+<span class="sd">        learning for a specified number of rounds with a customizable </span>
+<span class="sd">        query strategy and a number of options exposed to the user.</span>
+<span class="sd">        BFBrain analysis principally consist of execution(s) of this </span>
+<span class="sd">        method to train the BFBLearner&#39;s classifier.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        filepath : str, default=&#39;saved_AL&#39;</span>
+<span class="sd">            A string describing the name of a directory (which will be </span>
+<span class="sd">            created, if it doesn&#39;t exist) into which the Active_Learning </span>
+<span class="sd">            object will be saved after training.</span>
+
+<span class="sd">        K_batch_size : int, default=500</span>
+<span class="sd">            Additional training data, called K, is generated in batches </span>
+<span class="sd">            of K_batch_size entries. After each cycle of training,</span>
+<span class="sd">            K_batch_num batches, each with K_batch_size entries, are </span>
+<span class="sd">            generated and added to the training data.</span>
+
+<span class="sd">        K_batch_num : int, default 10</span>
+<span class="sd">            The number of batches, of batch_size K_batch_size, of </span>
+<span class="sd">            additional training data that is generated after each cycle </span>
+<span class="sd">            of training.</span>
+
+<span class="sd">        K_factor : int, default 100</span>
+<span class="sd">            To generate each batch of K_batch_size entries, </span>
+<span class="sd">            K_factor*K_batch_size candidate points are generated and the </span>
+<span class="sd">            top K_batch_size points are selected to be added to K.</span>
+
+<span class="sd">        score_fn : {&#39;BALD&#39;, &#39;MaxEntropy&#39;, &#39;variation_ratios&#39;, &#39;random&#39;, &#39;QBDC&#39;, &#39;predictive_variance&#39;} or callable</span>
+<span class="sd">            Either a string which denotes which of the implemented </span>
+<span class="sd">            strategies for scoring points to add to the training set to </span>
+<span class="sd">            employ, or a callable representing a custom function to </span>
+<span class="sd">            perform this role. Any custom functions must have a signature </span>
+<span class="sd">            (tf.keras.model, tf.tensor(tf.float32, tf.float32))-&gt; tf.tensor(tf.float32) </span>
+<span class="sd">            or (tf.keras.model, tf.tensor(tf.float32, tf.float32), int)-&gt; tf.tensor(tf.float32), </span>
+<span class="sd">            depending on whether score_ntrials is specified or not. The </span>
+<span class="sd">            string inputs correspond to scoring based on, in order: </span>
+<span class="sd">            Mutual information, Shannon entropy, variation ratios, a </span>
+<span class="sd">            random score, expected gradient length, </span>
+<span class="sd">            query by dropout committee (QBDC), and variance of the </span>
+<span class="sd">            neural network predictions.</span>
+
+<span class="sd">        nstop : int, default=20</span>
+<span class="sd">            The number of total cycles (generating new training data, </span>
+<span class="sd">            fitting the neural network to the training data, and recording </span>
+<span class="sd">            metrics) to perform.</span>
+
+<span class="sd">        full_train_interval : int, default=1</span>
+<span class="sd">            The active learning function will train over the entire </span>
+<span class="sd">            training data set every full_train_interval cycles. </span>
+<span class="sd">            Otherwise, it will only train the network on the most </span>
+<span class="sd">            recently generated set of new training data, for a much </span>
+<span class="sd">            smaller number of epochs. Recommended setting is 1, so that </span>
+<span class="sd">            dropout approximation to a Bayesian neural network holds </span>
+<span class="sd">            rigorously.</span>
+
+<span class="sd">        epoch_patience : int, default=100</span>
+<span class="sd">            A parameter for the training in individual cycles. The </span>
+<span class="sd">            neural network will stop training early in each cycle if </span>
+<span class="sd">            the network&#39;s performance on the validation data has not </span>
+<span class="sd">            improved for epoch_patience epochs.</span>
+
+<span class="sd">        epoch_limit : int, default=20000</span>
+<span class="sd">            The maximum number of epochs for the neural network to </span>
+<span class="sd">            train each cycle.</span>
+
+<span class="sd">        batch_size : int, default=200000</span>
+<span class="sd">            The size of batches of training data that are transferred to </span>
+<span class="sd">            the GPU simultaneously. If OOM errors are encountered, it is </span>
+<span class="sd">            recommended to reduce batch_size. Some discussion of batch </span>
+<span class="sd">            size is in order. We find that for greatest training </span>
+<span class="sd">            stability, it is best to have a batch_size larger than the </span>
+<span class="sd">            maximum number of training examples that will be included </span>
+<span class="sd">            in an active learning iteration-- so for starting at 1000 </span>
+<span class="sd">            initial points, with 5000 points added at each iteration </span>
+<span class="sd">            and 20 iterations executed, a batch_size &gt; 101000 may be</span>
+<span class="sd">            recommended. This will maximize training stability. However, </span>
+<span class="sd">            if instead more training examples must be considered than can </span>
+<span class="sd">            realistically fit into GPU memory, we recommend batch_size </span>
+<span class="sd">            parameters of approximately the number of points added during </span>
+<span class="sd">            each active learning iteration, to avoid different active </span>
+<span class="sd">            learning iterations suddenly exhibiting radically different </span>
+<span class="sd">            performance as the number of batches abruptly changes for </span>
+<span class="sd">            the first time late into active learning. Experimentation </span>
+<span class="sd">            regarding small batch size for different potentials is </span>
+<span class="sd">            recommended.</span>
+
+<span class="sd">        val_batch_size : int, optional</span>
+<span class="sd">            The size of batches of validation data that are transferred </span>
+<span class="sd">            to the GPU simultaneously. May be useful if small batches </span>
+<span class="sd">            are used for training, but much larger batches can be </span>
+<span class="sd">            accomodated during validation. If not specified, batch_size </span>
+<span class="sd">            will be used to batch the validation data.</span>
+
+<span class="sd">        save_interval : int, default=5</span>
+<span class="sd">            Every save_interval active learning iterations, the function </span>
+<span class="sd">            will save the BFBLearner object to the directory specified </span>
+<span class="sd">            in filepath.</span>
+
+<span class="sd">        stopping_cond : BFBrain.StoppingCondition object or subclass</span>
+<span class="sd">            This object allows a user to specify conditions under which </span>
+<span class="sd">            active learning should terminate before nstop iterations </span>
+<span class="sd">            have been performed. See the BFBrain.StoppingCondition </span>
+<span class="sd">            documentation for more details.</span>
+
+<span class="sd">        prob_score_fn : {&#39;BALD&#39;, &#39;MaxEntropy&#39;, &#39;variation_ratios&#39;, &#39;random&#39;, &#39;QBDC&#39;, &#39;predictive_variance&#39;} or callable</span>
+<span class="sd">            Either a string which denotes which of the implemented </span>
+<span class="sd">            strategies for scoring points to add to the training set,</span>
+<span class="sd">            or a callable representing a custom function to perform this </span>
+<span class="sd">            role. Any custom functions must have a signature </span>
+<span class="sd">            (tf.keras.model, tf.tensor(tf.float32, tf.float32))-&gt; tf.tensor(tf.float32) </span>
+<span class="sd">            or (tf.keras.model, tf.tensor(tf.float32, tf.float32), int)-&gt; tf.tensor(tf.float32),</span>
+<span class="sd">            depending on whether score_ntrials is specified or not. </span>
+<span class="sd">            Unlike score_fn, this function is employed when weighting </span>
+<span class="sd">            points to sample around to generate new training data, so that </span>
+<span class="sd">            an algorithm might preferentially sample around points with </span>
+<span class="sd">            high mutual information (with prob_score_fn = &#39;BALD&#39;), but </span>
+<span class="sd">            decide which points to add to the training set based on </span>
+<span class="sd">            Shannon entropy (score_fn = &#39;MaxEntropy&#39;), for example.</span>
+<span class="sd">            Has no effect if L_probability_weighting is False.</span>
+
+<span class="sd">        truth_label_fn : callable, optional</span>
+<span class="sd">            If a callable, must take a 1-D NumPy array representing a </span>
+<span class="sd">            single set of quartic coefficients and return a Boolean True </span>
+<span class="sd">            if the potential they describe is bounded from below, False </span>
+<span class="sd">            otherwise. If specified, training data will be labelled using </span>
+<span class="sd">            this callable instead of the oracle in the DataManager object.</span>
+
+<span class="sd">        score_ntrials : int, optional</span>
+<span class="sd">            Many of the implemented score_fn methods (&#39;BALD&#39;, &#39;MaxEntropy&#39;, &#39;variation_ratios&#39;, &#39;QBDC&#39;, and &#39;predictive_variance&#39;) have an optional argument controlling the number of forward passes </span>
+<span class="sd">            through the network to compute their values. This parameter </span>
+<span class="sd">            allows this value to be specified for score_fn&#39;s evaluations.</span>
+
+<span class="sd">        prob_score_ntrials : int, optional</span>
+<span class="sd">            Same as score_ntrials, but for prob_score_fn. Does not have </span>
+<span class="sd">            any effect if prob_score_fn is not specified.</span>
+
+<span class="sd">        reinitialize_weights : bool, default=True</span>
+<span class="sd">            If True, randomize the neural network weights before each new </span>
+<span class="sd">            round of active learning (unless the algorithm is not training </span>
+<span class="sd">            on the full training data set-- see full_train_interval).</span>
+<span class="sd">            The recommended setting is True, to prevent potential </span>
+<span class="sd">            overfitting on the points sampled earlier and maintain the </span>
+<span class="sd">            dropout approximation of the Bayesian neural network </span>
+<span class="sd">            rigorously.</span>
+
+<span class="sd">        rebalance_train_data : bool, default=False</span>
+<span class="sd">            If True, the training set will be rebalanced every iteration </span>
+<span class="sd">            by adding new bounded from below points to correct an </span>
+<span class="sd">            overabundance of points which are not bounded from below.</span>
+
+<span class="sd">        L_probability_weighting : bool, default=False</span>
+<span class="sd">            If True, the selection of existing bounded-from-below training </span>
+<span class="sd">            points to sample around for generating new points will be </span>
+<span class="sd">            weighted based on prob_score_fn.</span>
+
+<span class="sd">        plot_metrics : bool, default=False</span>
+<span class="sd">            If True, all metrics will be plotted in the command line as </span>
+<span class="sd">            well as saved to the output filepath when training completes.</span>
+
+<span class="sd">        verbose : bool, default=False</span>
+<span class="sd">            If True, print out information about the progress and </span>
+<span class="sd">            performance of the active learning loop throughout the run </span>
+<span class="sd">            to the console. Otherwise data on the neural network </span>
+<span class="sd">            performance after each iteration is still saved to a file </span>
+<span class="sd">            &#39;output.txt&#39; in the filepath directory.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Determine how to select additional points to add to the training set based on the input of score_fn.</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">callable</span><span class="p">(</span><span class="n">score_fn</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">score_fn</span> <span class="o">=</span> <span class="n">scoring_funcs</span><span class="p">[</span><span class="n">score_fn</span><span class="p">]</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;score_fn must be a callable or one of the strings </span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">scoring_funcs</span><span class="o">.</span><span class="n">keys</span><span class="p">())))</span>
+
+        <span class="k">if</span> <span class="n">score_ntrials</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">score_fn</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">function</span><span class="p">(</span><span class="n">partial</span><span class="p">(</span><span class="n">score_fn</span><span class="p">,</span> <span class="n">n_trials</span> <span class="o">=</span> <span class="n">score_ntrials</span><span class="p">),</span> <span class="n">jit_compile</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">score_fn</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">function</span><span class="p">(</span><span class="n">score_fn</span><span class="p">,</span> <span class="n">jit_compile</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">prob_score_fn</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">prob_score_fn</span> <span class="o">=</span> <span class="n">score_fn</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">callable</span><span class="p">(</span><span class="n">prob_score_fn</span><span class="p">):</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">prob_score_fn</span> <span class="o">=</span> <span class="n">scoring_funcs</span><span class="p">[</span><span class="n">prob_score_fn</span><span class="p">]</span>
+                <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;score_fn must be a callable or one of the strings </span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">scoring_funcs</span><span class="o">.</span><span class="n">keys</span><span class="p">())))</span>
+            <span class="k">if</span> <span class="n">prob_score_ntrials</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">prob_score_fn</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">function</span><span class="p">(</span><span class="n">partial</span><span class="p">(</span><span class="n">prob_score_fn</span><span class="p">,</span> <span class="n">n_trials</span> <span class="o">=</span> <span class="n">prob_score_ntrials</span><span class="p">),</span> <span class="n">jit_compile</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">prob_score_fn</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">function</span><span class="p">(</span><span class="n">prob_score_fn</span><span class="p">,</span> <span class="n">jit_compile</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Set up a dictionary of the metrics so that the stopping condition can more easily find the one it&#39;s supposed to monitor.</span>
+        <span class="n">metrics_dict</span> <span class="o">=</span> <span class="p">{</span><span class="n">metric</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">metric</span> <span class="k">for</span> <span class="n">metric</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">}</span>
+        <span class="c1"># Set up a boolean flag which monitors if the active learning loop should stop early.</span>
+        <span class="n">should_stop</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">stopping_cond</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">stopping_cond</span><span class="p">,</span> <span class="n">StoppingCondition</span><span class="p">)):</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;stopping_cond must be either None, StoppingCondition, or a subclass of StoppingCondition.&#39;</span><span class="p">)</span>
+
+        <span class="c1">#Set up Tensorflow datasets to greatly increase training speed.</span>
+        <span class="n">train_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dm</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_train</span><span class="p">)</span>
+        <span class="n">train_data</span> <span class="o">=</span> <span class="n">train_data</span><span class="o">.</span><span class="n">batch</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">num_parallel_calls</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">AUTOTUNE</span><span class="p">)</span><span class="o">.</span><span class="n">prefetch</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">AUTOTUNE</span><span class="p">)</span><span class="o">.</span><span class="n">cache</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_val</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">val_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dm</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_val</span><span class="p">,</span> <span class="n">validation</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">val_batch_size</span><span class="o">==-</span><span class="mi">1</span><span class="p">:</span>
+                <span class="n">val_data</span> <span class="o">=</span> <span class="n">val_data</span><span class="o">.</span><span class="n">batch</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">num_parallel_calls</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">AUTOTUNE</span><span class="p">)</span><span class="o">.</span><span class="n">prefetch</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">AUTOTUNE</span><span class="p">)</span><span class="o">.</span><span class="n">cache</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">val_data</span> <span class="o">=</span> <span class="n">val_data</span><span class="o">.</span><span class="n">batch</span><span class="p">(</span><span class="n">val_batch_size</span><span class="p">,</span> <span class="n">num_parallel_calls</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">AUTOTUNE</span><span class="p">)</span><span class="o">.</span><span class="n">prefetch</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">AUTOTUNE</span><span class="p">)</span><span class="o">.</span><span class="n">cache</span><span class="p">()</span>
+
+        <span class="c1">#Create a new directory in which to save the model checkpoint (and later the model) if one does not exist already.</span>
+        <span class="k">if</span><span class="p">(</span><span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">filepath</span><span class="p">)):</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
+
+        <span class="c1">#Create the output summary file here and save the model summary, unless the model has been loaded from a previous file.</span>
+        <span class="k">if</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">idx</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="p">(</span><span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">filepath</span><span class="o">+</span><span class="s1">&#39;/output.txt&#39;</span><span class="p">))):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_create_output_file</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_print_variables</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
+
+        <span class="c1">#Set up a callback functions so that the neural network will stop after epoch_patience epochs without improvement on the validation set accuracy.</span>
+        <span class="n">early_stopping</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">EarlyStopping</span><span class="p">(</span><span class="n">patience</span><span class="o">=</span><span class="n">epoch_patience</span><span class="p">,</span> <span class="n">monitor</span> <span class="o">=</span> <span class="s1">&#39;loss&#39;</span><span class="p">,</span> <span class="n">restore_best_weights</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        
+        <span class="c1"># If the neural network is totally untrained, perform the first training outside of the loop.</span>
+        <span class="k">if</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">idx</span> <span class="o">==</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="c1"># Take any metrics which should be recorded before any training.</span>
+            <span class="k">for</span> <span class="n">metric</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">metric</span><span class="o">.</span><span class="n">sc_type</span> <span class="o">==</span> <span class="s1">&#39;model&#39;</span><span class="p">:</span>
+                    <span class="n">metric</span><span class="o">.</span><span class="n">record_score</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
+            <span class="k">if</span><span class="p">(</span><span class="n">verbose</span><span class="p">):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;training the first epoch...&#39;</span><span class="p">)</span>
+            <span class="c1"># Fit the model to the initial training data.</span>
+            <span class="n">history</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_data</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="n">epoch_limit</span><span class="p">,</span> <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span><span class="n">early_stopping</span><span class="p">],</span> <span class="n">verbose</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="c1"># history = self.model.fit(train_data, epochs=100*epoch_patience, verbose = 0)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">idx</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">if</span><span class="p">(</span><span class="n">verbose</span><span class="p">):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;trained!&#39;</span><span class="p">)</span>
+            <span class="c1"># Record the performance of the classifier during its training loop and record any metrics based on performance over validation data.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">append_history</span><span class="p">(</span><span class="n">history</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">metric</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">metric</span><span class="o">.</span><span class="n">sc_type</span> <span class="o">==</span> <span class="s1">&#39;val&#39;</span><span class="p">:</span>
+                    <span class="n">metric</span><span class="o">.</span><span class="n">record_score</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">val_data</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">metric</span><span class="o">.</span><span class="n">sc_type</span> <span class="o">==</span> <span class="s1">&#39;model&#39;</span><span class="p">:</span>
+                    <span class="n">metric</span><span class="o">.</span><span class="n">record_score</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">ind</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">nstop</span><span class="o">+</span><span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">idx</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)):</span>
+            <span class="c1">#Start the active learning loop by generating a new set K of additional points to add to the model.</span>
+            <span class="k">if</span><span class="p">(</span><span class="n">verbose</span><span class="p">):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Generating additional training set K...&#39;</span><span class="p">)</span>
+            <span class="c1"># Generate the new labelled training data.</span>
+
+            <span class="n">K_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_K_batched</span><span class="p">(</span><span class="n">K_batch_size</span><span class="p">,</span> <span class="n">K_batch_num</span><span class="p">,</span> <span class="n">K_factor</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_train</span><span class="o">.</span><span class="n">pos</span><span class="p">,</span> <span class="n">score_fn</span><span class="p">,</span> <span class="n">prob_score_fn</span><span class="p">,</span> <span class="n">truth_label_fn</span><span class="p">,</span> <span class="n">L_probability_weighting</span><span class="p">,</span> <span class="n">verbose</span><span class="p">)</span>
+            <span class="c1">#Add these points and their labels to the training sample</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data_train</span><span class="o">.</span><span class="n">append_data</span><span class="p">(</span><span class="n">K_data</span><span class="p">)</span>
+            <span class="c1"># In the likely event that more negative points than positives have been selected in the active learning iteration, generate new positive points using the convexity of the bounded-from-below space</span>
+            <span class="c1"># and append these points to the training data, if rebalance_training_data is True. A much larger set of candidate training points will be generated here, but as in the first acquisition iteration,</span>
+            <span class="c1"># only the points score_fn evaluates as most interesting will be retained and added to the training set.</span>
+            <span class="k">if</span><span class="p">(</span><span class="n">rebalance_train_data</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_balance_with_positives</span><span class="p">(</span><span class="n">K_batch_size</span><span class="p">,</span> <span class="n">K_factor</span><span class="p">,</span> <span class="n">score_fn</span><span class="p">,</span> <span class="n">verbose</span><span class="p">)</span>
+
+            <span class="c1"># Record metrics that are based on new training data and those based on the pool of proposed candidate points.</span>
+            <span class="n">new_tensor</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">K_data</span><span class="o">.</span><span class="n">pos</span><span class="p">,</span> <span class="n">K_data</span><span class="o">.</span><span class="n">neg</span><span class="p">),</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">))</span>
+            <span class="n">new_labels</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">((</span><span class="n">tf</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">K_data</span><span class="o">.</span><span class="n">pos</span><span class="p">),)),</span> <span class="n">tf</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">K_data</span><span class="o">.</span><span class="n">neg</span><span class="p">),))),</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">metric</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">metric</span><span class="o">.</span><span class="n">sc_type</span> <span class="o">==</span> <span class="s1">&#39;train&#39;</span><span class="p">:</span>
+                    <span class="n">metric</span><span class="o">.</span><span class="n">record_score</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">new_tensor</span><span class="p">,</span> <span class="n">new_labels</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">metric</span><span class="o">.</span><span class="n">sc_type</span> <span class="o">==</span> <span class="s1">&#39;pool&#39;</span><span class="p">:</span>
+                    <span class="n">metric</span><span class="o">.</span><span class="n">record_score</span><span class="p">()</span>
+                <span class="c1"># Check whether the stopping condition has been met</span>
+                <span class="k">if</span> <span class="n">stopping_cond</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">metric</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">stopping_cond</span><span class="o">.</span><span class="n">metric_name</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">stopping_cond</span><span class="p">(</span><span class="n">metrics_dict</span><span class="p">):</span>
+                            <span class="n">should_stop</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="c1"># If the stopping condition has been met, terminate the active learning loop.</span>
+            <span class="k">if</span> <span class="n">should_stop</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;stopping condition satisfied. Exiting training loop early.&#39;</span><span class="p">)</span>
+                <span class="k">break</span>
+
+            <span class="c1">#Every full_train_interval training steps, train on the full data set. Currently set by default to full_train_interval = 1.</span>
+            <span class="k">if</span><span class="p">(</span><span class="n">ind</span> <span class="o">%</span> <span class="n">full_train_interval</span> <span class="o">==</span> <span class="mi">0</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_update_regularizers</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">l_constant</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_train</span><span class="o">.</span><span class="n">n_elements</span><span class="p">(),</span> <span class="n">reinitialize_weights</span><span class="p">)</span>
+                <span class="n">train_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dm</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_train</span><span class="p">)</span>
+                <span class="c1"># Determine a batch size that&#39;s as close to an even divisor of the number of training set elements as possible. </span>
+                <span class="c1"># This prevents a sudden severe degredation in classifier performance if one batch happens to be a highly nonrepresentative small sample of the total training data.</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_train</span><span class="o">.</span><span class="n">n_elements</span><span class="p">()</span> <span class="o">&gt;</span> <span class="n">batch_size</span><span class="p">:</span>
+                    <span class="n">new_batch_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_train</span><span class="o">.</span><span class="n">n_elements</span><span class="p">()</span> <span class="o">//</span> <span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">data_train</span><span class="o">.</span><span class="n">n_elements</span><span class="p">()</span><span class="o">//</span><span class="n">batch_size</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+                    <span class="n">train_data</span> <span class="o">=</span> <span class="n">train_data</span><span class="o">.</span><span class="n">batch</span><span class="p">(</span><span class="n">new_batch_size</span><span class="p">,</span> <span class="n">num_parallel_calls</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">AUTOTUNE</span><span class="p">)</span><span class="o">.</span><span class="n">prefetch</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">AUTOTUNE</span><span class="p">)</span><span class="o">.</span><span class="n">cache</span><span class="p">()</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">train_data</span> <span class="o">=</span> <span class="n">train_data</span><span class="o">.</span><span class="n">batch</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">num_parallel_calls</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">AUTOTUNE</span><span class="p">)</span><span class="o">.</span><span class="n">prefetch</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">AUTOTUNE</span><span class="p">)</span><span class="o">.</span><span class="n">cache</span><span class="p">()</span>
+                <span class="k">if</span><span class="p">(</span><span class="n">verbose</span><span class="p">):</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;training round &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">idx</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;...&#39;</span><span class="p">)</span>
+                <span class="n">history</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_data</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">200</span><span class="o">*</span><span class="n">epoch_limit</span><span class="p">,</span> <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span><span class="n">early_stopping</span><span class="p">],</span> <span class="n">verbose</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                <span class="c1"># history = self.model.fit(train_data, epochs=100*epoch_patience, verbose=0)</span>
+            <span class="c1">#Otherwise train on just the new data</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_update_regularizers</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">l_constant</span><span class="p">,</span> <span class="p">(</span><span class="n">K_data</span><span class="o">.</span><span class="n">n_elements</span><span class="p">()),</span> <span class="kc">False</span><span class="p">)</span>
+                <span class="n">train_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dm</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="n">K_data</span><span class="p">)</span>
+                <span class="n">train_data</span> <span class="o">=</span> <span class="n">train_data</span><span class="o">.</span><span class="n">batch</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">num_parallel_calls</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">AUTOTUNE</span><span class="p">)</span><span class="o">.</span><span class="n">prefetch</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">AUTOTUNE</span><span class="p">)</span><span class="o">.</span><span class="n">cache</span><span class="p">()</span>
+                <span class="k">if</span><span class="p">(</span><span class="n">verbose</span><span class="p">):</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;training round &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">idx</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;...&#39;</span><span class="p">)</span>
+                <span class="c1"># Train on only a small number of epochs here, to prevent overfitting to highly uncertain new data.</span>
+                <span class="n">history</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_data</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span><span class="n">early_stopping</span><span class="p">],</span> <span class="n">verbose</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            
+            <span class="c1"># Record the training history.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">append_history</span><span class="p">(</span><span class="n">history</span><span class="p">)</span>
+
+            <span class="c1"># Record the validation and model-based metrics.</span>
+            <span class="k">if</span><span class="p">(</span><span class="n">verbose</span><span class="p">):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;validating performance of the model...&#39;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">metric</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">metric</span><span class="o">.</span><span class="n">sc_type</span> <span class="o">==</span> <span class="s1">&#39;val&#39;</span><span class="p">:</span>
+                    <span class="n">metric</span><span class="o">.</span><span class="n">record_score</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">val_data</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">metric</span><span class="o">.</span><span class="n">sc_type</span> <span class="o">==</span> <span class="s1">&#39;model&#39;</span><span class="p">:</span>
+                    <span class="n">metric</span><span class="o">.</span><span class="n">record_score</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">stopping_cond</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">metric</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">stopping_cond</span><span class="o">.</span><span class="n">metric_name</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">stopping_cond</span><span class="p">(</span><span class="n">metrics_dict</span><span class="p">):</span>
+                            <span class="n">should_stop</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">if</span> <span class="n">should_stop</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;stopping condition satisfied. Exiting training loop early.&#39;</span><span class="p">)</span>
+                <span class="k">break</span>
+                    
+            <span class="c1"># Print out the full set of metrics for this round to the output text file, plus the console if verbose is True.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_get_status</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">idx</span><span class="p">,</span> <span class="n">filepath</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">)</span>
+
+            <span class="c1"># Every save_interval iterations, save the active learning state.</span>
+            <span class="k">if</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">idx</span> <span class="o">%</span> <span class="n">save_interval</span> <span class="o">==</span> <span class="mi">0</span><span class="p">):</span>
+                <span class="c1">#Every save_interval iterations, Save the critical data for the project (the training data, testing data, model, and rng states) so that training can be resumed later.</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">save_AL_state</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">idx</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># If the loop terminated early due to a stopping condition, make sure that the status_history was recorded in output.txt here.</span>
+        <span class="k">if</span> <span class="n">should_stop</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_get_status</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">idx</span><span class="p">,</span> <span class="n">filepath</span><span class="p">,</span> <span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span><span class="p">)</span>
+
+        <span class="c1">#Save the critical data for the project (the training data, testing data, model, and rng states) so that training can be resumed later or the model can be exported.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">save_AL_state</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
+
+        <span class="c1"># Plot the results-- in verbose mode also draw these plots in the console, if possible.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">plot_history</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">plot_metrics</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">verbose</span> <span class="ow">and</span> <span class="n">plot_metrics</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">plot_history</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">plot_metrics</span><span class="p">()</span>
+
+        <span class="k">return</span></div>
+</div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">bfbrain</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorial.html">Tutorial and User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">BFBrain</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, George Wojcik.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.2.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

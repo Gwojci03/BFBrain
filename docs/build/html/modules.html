@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>BFBrain &#8212; bfbrain 1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b3523f8e" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=039e1c02" />
+    <script src="_static/documentation_options.js?v=f2a433a1"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="bfbrain package" href="bfbrain.html" />
+    <link rel="prev" title="Tutorial Step 4: Analysis" href="analysis.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="bfbrain">
+<h1>BFBrain<a class="headerlink" href="#bfbrain" title="Link to this heading">¶</a></h1>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="bfbrain.html">bfbrain package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="bfbrain.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bfbrain.html#module-bfbrain.AL_Metrics">bfbrain.AL_Metrics module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.process_score_fn"><code class="docutils literal notranslate"><span class="pre">process_score_fn()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ALMetric"><code class="docutils literal notranslate"><span class="pre">ALMetric</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ALMetric.status_history"><code class="docutils literal notranslate"><span class="pre">ALMetric.status_history</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ALMetric.sc_type"><code class="docutils literal notranslate"><span class="pre">ALMetric.sc_type</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ALMetric.name"><code class="docutils literal notranslate"><span class="pre">ALMetric.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ALMetric.record_score"><code class="docutils literal notranslate"><span class="pre">ALMetric.record_score()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ALMetric.print_status"><code class="docutils literal notranslate"><span class="pre">ALMetric.print_status()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ALMetric.perf_message"><code class="docutils literal notranslate"><span class="pre">ALMetric.perf_message()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ALMetric.performance_check"><code class="docutils literal notranslate"><span class="pre">ALMetric.performance_check()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ALMetric.get_metric"><code class="docutils literal notranslate"><span class="pre">ALMetric.get_metric()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ALMetric.reset_data"><code class="docutils literal notranslate"><span class="pre">ALMetric.reset_data()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ALMetric.get_legend"><code class="docutils literal notranslate"><span class="pre">ALMetric.get_legend()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ALMetric.plot_metric"><code class="docutils literal notranslate"><span class="pre">ALMetric.plot_metric()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ModelMetric"><code class="docutils literal notranslate"><span class="pre">ModelMetric</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ModelMetric.performance_check"><code class="docutils literal notranslate"><span class="pre">ModelMetric.performance_check()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.UnlabelledPredsMetric"><code class="docutils literal notranslate"><span class="pre">UnlabelledPredsMetric</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.UnlabelledPredsMetric.lams"><code class="docutils literal notranslate"><span class="pre">UnlabelledPredsMetric.lams</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.UnlabelledPredsMetric.ds"><code class="docutils literal notranslate"><span class="pre">UnlabelledPredsMetric.ds</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.UnlabelledPredsMetric.batch_size"><code class="docutils literal notranslate"><span class="pre">UnlabelledPredsMetric.batch_size</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.UnlabelledPredsMetric.name"><code class="docutils literal notranslate"><span class="pre">UnlabelledPredsMetric.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.UnlabelledPredsMetric.performance_check"><code class="docutils literal notranslate"><span class="pre">UnlabelledPredsMetric.performance_check()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.UnlabelledAgreement"><code class="docutils literal notranslate"><span class="pre">UnlabelledAgreement</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.UnlabelledAgreement.status_history"><code class="docutils literal notranslate"><span class="pre">UnlabelledAgreement.status_history</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.UnlabelledAgreement.old_preds"><code class="docutils literal notranslate"><span class="pre">UnlabelledAgreement.old_preds</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.UnlabelledAgreement.lams"><code class="docutils literal notranslate"><span class="pre">UnlabelledAgreement.lams</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.UnlabelledAgreement.ds"><code class="docutils literal notranslate"><span class="pre">UnlabelledAgreement.ds</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.UnlabelledAgreement.batch_size"><code class="docutils literal notranslate"><span class="pre">UnlabelledAgreement.batch_size</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.UnlabelledAgreement.name"><code class="docutils literal notranslate"><span class="pre">UnlabelledAgreement.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.UnlabelledAgreement.n_trials"><code class="docutils literal notranslate"><span class="pre">UnlabelledAgreement.n_trials</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.UnlabelledAgreement.performance_check"><code class="docutils literal notranslate"><span class="pre">UnlabelledAgreement.performance_check()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.UnlabelledAgreement.get_metric"><code class="docutils literal notranslate"><span class="pre">UnlabelledAgreement.get_metric()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.UnlabelledAgreement.reset_data"><code class="docutils literal notranslate"><span class="pre">UnlabelledAgreement.reset_data()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.UnlabelledDeltaF"><code class="docutils literal notranslate"><span class="pre">UnlabelledDeltaF</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.UnlabelledDeltaF.status_history"><code class="docutils literal notranslate"><span class="pre">UnlabelledDeltaF.status_history</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.UnlabelledDeltaF.old_preds"><code class="docutils literal notranslate"><span class="pre">UnlabelledDeltaF.old_preds</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.UnlabelledDeltaF.lams"><code class="docutils literal notranslate"><span class="pre">UnlabelledDeltaF.lams</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.UnlabelledDeltaF.ds"><code class="docutils literal notranslate"><span class="pre">UnlabelledDeltaF.ds</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.UnlabelledDeltaF.batch_size"><code class="docutils literal notranslate"><span class="pre">UnlabelledDeltaF.batch_size</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.UnlabelledDeltaF.name"><code class="docutils literal notranslate"><span class="pre">UnlabelledDeltaF.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.UnlabelledDeltaF.n_trials"><code class="docutils literal notranslate"><span class="pre">UnlabelledDeltaF.n_trials</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.UnlabelledDeltaF.performance_check"><code class="docutils literal notranslate"><span class="pre">UnlabelledDeltaF.performance_check()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.UnlabelledDeltaF.get_metric"><code class="docutils literal notranslate"><span class="pre">UnlabelledDeltaF.get_metric()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.UnlabelledDeltaF.reset_data"><code class="docutils literal notranslate"><span class="pre">UnlabelledDeltaF.reset_data()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ValidationMetric"><code class="docutils literal notranslate"><span class="pre">ValidationMetric</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ValidationMetric.performance_check"><code class="docutils literal notranslate"><span class="pre">ValidationMetric.performance_check()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.TrainMetric"><code class="docutils literal notranslate"><span class="pre">TrainMetric</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.TrainMetric.performance_check"><code class="docutils literal notranslate"><span class="pre">TrainMetric.performance_check()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolMetric"><code class="docutils literal notranslate"><span class="pre">PoolMetric</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolMetric.batch_scores"><code class="docutils literal notranslate"><span class="pre">PoolMetric.batch_scores</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolMetric.record_batch"><code class="docutils literal notranslate"><span class="pre">PoolMetric.record_batch()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolMetric.record_score"><code class="docutils literal notranslate"><span class="pre">PoolMetric.record_score()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolMetricReduction"><code class="docutils literal notranslate"><span class="pre">PoolMetricReduction</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolMetricReduction.reduction"><code class="docutils literal notranslate"><span class="pre">PoolMetricReduction.reduction</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolMetricReduction.red_name"><code class="docutils literal notranslate"><span class="pre">PoolMetricReduction.red_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolMetricReduction.record_batch"><code class="docutils literal notranslate"><span class="pre">PoolMetricReduction.record_batch()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolMetricReduction.record_score"><code class="docutils literal notranslate"><span class="pre">PoolMetricReduction.record_score()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolMetricReduction.perf_message"><code class="docutils literal notranslate"><span class="pre">PoolMetricReduction.perf_message()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolMetricReduction.get_metric"><code class="docutils literal notranslate"><span class="pre">PoolMetricReduction.get_metric()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolMetricReduction.reset_data"><code class="docutils literal notranslate"><span class="pre">PoolMetricReduction.reset_data()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolMetricReduction.get_legend"><code class="docutils literal notranslate"><span class="pre">PoolMetricReduction.get_legend()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolDeltaF"><code class="docutils literal notranslate"><span class="pre">PoolDeltaF</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolDeltaF.status_history"><code class="docutils literal notranslate"><span class="pre">PoolDeltaF.status_history</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolDeltaF.name"><code class="docutils literal notranslate"><span class="pre">PoolDeltaF.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolDeltaF.old_pool"><code class="docutils literal notranslate"><span class="pre">PoolDeltaF.old_pool</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolDeltaF.new_pool"><code class="docutils literal notranslate"><span class="pre">PoolDeltaF.new_pool</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolDeltaF.old_preds"><code class="docutils literal notranslate"><span class="pre">PoolDeltaF.old_preds</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolDeltaF.new_preds"><code class="docutils literal notranslate"><span class="pre">PoolDeltaF.new_preds</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolDeltaF.newer_preds"><code class="docutils literal notranslate"><span class="pre">PoolDeltaF.newer_preds</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolDeltaF.old_pool_iter"><code class="docutils literal notranslate"><span class="pre">PoolDeltaF.old_pool_iter</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolDeltaF.record_batch"><code class="docutils literal notranslate"><span class="pre">PoolDeltaF.record_batch()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolDeltaF.performance_check"><code class="docutils literal notranslate"><span class="pre">PoolDeltaF.performance_check()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolDeltaF.record_score"><code class="docutils literal notranslate"><span class="pre">PoolDeltaF.record_score()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolDeltaF.reset_data"><code class="docutils literal notranslate"><span class="pre">PoolDeltaF.reset_data()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ModelEvaluation"><code class="docutils literal notranslate"><span class="pre">ModelEvaluation</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ModelEvaluation.status_history"><code class="docutils literal notranslate"><span class="pre">ModelEvaluation.status_history</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ModelEvaluation.name"><code class="docutils literal notranslate"><span class="pre">ModelEvaluation.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ModelEvaluation.performance_check"><code class="docutils literal notranslate"><span class="pre">ModelEvaluation.performance_check()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ModelEvaluation.perf_message"><code class="docutils literal notranslate"><span class="pre">ModelEvaluation.perf_message()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ModelEvaluation.get_metric"><code class="docutils literal notranslate"><span class="pre">ModelEvaluation.get_metric()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.MCModelEvaluation"><code class="docutils literal notranslate"><span class="pre">MCModelEvaluation</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.MCModelEvaluation.name"><code class="docutils literal notranslate"><span class="pre">MCModelEvaluation.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.MCModelEvaluation.performance_check"><code class="docutils literal notranslate"><span class="pre">MCModelEvaluation.performance_check()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.MCModelEvaluation.perf_message"><code class="docutils literal notranslate"><span class="pre">MCModelEvaluation.perf_message()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.MCModelEvaluation.get_metric"><code class="docutils literal notranslate"><span class="pre">MCModelEvaluation.get_metric()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.DecisionBoundaryScore"><code class="docutils literal notranslate"><span class="pre">DecisionBoundaryScore</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.DecisionBoundaryScore.status_history"><code class="docutils literal notranslate"><span class="pre">DecisionBoundaryScore.status_history</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.DecisionBoundaryScore.name"><code class="docutils literal notranslate"><span class="pre">DecisionBoundaryScore.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.DecisionBoundaryScore.tol_dist"><code class="docutils literal notranslate"><span class="pre">DecisionBoundaryScore.tol_dist</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.DecisionBoundaryScore.performance_check"><code class="docutils literal notranslate"><span class="pre">DecisionBoundaryScore.performance_check()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.DecisionBoundaryScore.perf_message"><code class="docutils literal notranslate"><span class="pre">DecisionBoundaryScore.perf_message()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.DecisionBoundaryScore.get_metric"><code class="docutils literal notranslate"><span class="pre">DecisionBoundaryScore.get_metric()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ValidationConfusionMatrix"><code class="docutils literal notranslate"><span class="pre">ValidationConfusionMatrix</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ValidationConfusionMatrix.status_history"><code class="docutils literal notranslate"><span class="pre">ValidationConfusionMatrix.status_history</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ValidationConfusionMatrix.name"><code class="docutils literal notranslate"><span class="pre">ValidationConfusionMatrix.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ValidationConfusionMatrix.score_fn"><code class="docutils literal notranslate"><span class="pre">ValidationConfusionMatrix.score_fn</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ValidationConfusionMatrix.tf_score_fn"><code class="docutils literal notranslate"><span class="pre">ValidationConfusionMatrix.tf_score_fn</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ValidationConfusionMatrix.n_trials"><code class="docutils literal notranslate"><span class="pre">ValidationConfusionMatrix.n_trials</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ValidationConfusionMatrix.performance_check"><code class="docutils literal notranslate"><span class="pre">ValidationConfusionMatrix.performance_check()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ValidationConfusionMatrix.perf_message"><code class="docutils literal notranslate"><span class="pre">ValidationConfusionMatrix.perf_message()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ValidationConfusionMatrix.get_metric"><code class="docutils literal notranslate"><span class="pre">ValidationConfusionMatrix.get_metric()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ValidationConfusionMatrix.get_legend"><code class="docutils literal notranslate"><span class="pre">ValidationConfusionMatrix.get_legend()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ValidationFScore"><code class="docutils literal notranslate"><span class="pre">ValidationFScore</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ValidationFScore.status_history"><code class="docutils literal notranslate"><span class="pre">ValidationFScore.status_history</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ValidationFScore.name"><code class="docutils literal notranslate"><span class="pre">ValidationFScore.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ValidationFScore.score_fn"><code class="docutils literal notranslate"><span class="pre">ValidationFScore.score_fn</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ValidationFScore.tf_score_fn"><code class="docutils literal notranslate"><span class="pre">ValidationFScore.tf_score_fn</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ValidationFScore.n_trials"><code class="docutils literal notranslate"><span class="pre">ValidationFScore.n_trials</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ValidationFScore.performance_check"><code class="docutils literal notranslate"><span class="pre">ValidationFScore.performance_check()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ValidationFScore.perf_message"><code class="docutils literal notranslate"><span class="pre">ValidationFScore.perf_message()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ValidationFScore.get_metric"><code class="docutils literal notranslate"><span class="pre">ValidationFScore.get_metric()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ValidationFScore.get_legend"><code class="docutils literal notranslate"><span class="pre">ValidationFScore.get_legend()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolScore"><code class="docutils literal notranslate"><span class="pre">PoolScore</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolScore.status_history"><code class="docutils literal notranslate"><span class="pre">PoolScore.status_history</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolScore.name"><code class="docutils literal notranslate"><span class="pre">PoolScore.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolScore.score_fn"><code class="docutils literal notranslate"><span class="pre">PoolScore.score_fn</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolScore.tf_score_fn"><code class="docutils literal notranslate"><span class="pre">PoolScore.tf_score_fn</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolScore.n_trials"><code class="docutils literal notranslate"><span class="pre">PoolScore.n_trials</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolScore.performance_check"><code class="docutils literal notranslate"><span class="pre">PoolScore.performance_check()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.NewDataScore"><code class="docutils literal notranslate"><span class="pre">NewDataScore</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.NewDataScore.status_history"><code class="docutils literal notranslate"><span class="pre">NewDataScore.status_history</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.NewDataScore.name"><code class="docutils literal notranslate"><span class="pre">NewDataScore.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.NewDataScore.score_fn"><code class="docutils literal notranslate"><span class="pre">NewDataScore.score_fn</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.NewDataScore.tf_score_fn"><code class="docutils literal notranslate"><span class="pre">NewDataScore.tf_score_fn</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.NewDataScore.n_trials"><code class="docutils literal notranslate"><span class="pre">NewDataScore.n_trials</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.NewDataScore.reduction"><code class="docutils literal notranslate"><span class="pre">NewDataScore.reduction</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.NewDataScore.red_name"><code class="docutils literal notranslate"><span class="pre">NewDataScore.red_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.NewDataScore.performance_check"><code class="docutils literal notranslate"><span class="pre">NewDataScore.performance_check()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.NewDataScore.perf_message"><code class="docutils literal notranslate"><span class="pre">NewDataScore.perf_message()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.NewDataScore.get_metric"><code class="docutils literal notranslate"><span class="pre">NewDataScore.get_metric()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.NewDataScore.get_legend"><code class="docutils literal notranslate"><span class="pre">NewDataScore.get_legend()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.StoppingCondition"><code class="docutils literal notranslate"><span class="pre">StoppingCondition</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.StoppingCondition.metric_name"><code class="docutils literal notranslate"><span class="pre">StoppingCondition.metric_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.StoppingCondition.metric_func"><code class="docutils literal notranslate"><span class="pre">StoppingCondition.metric_func</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.StoppingCondition.find_stopping_index"><code class="docutils literal notranslate"><span class="pre">StoppingCondition.find_stopping_index()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ScoreNotDecreasing"><code class="docutils literal notranslate"><span class="pre">ScoreNotDecreasing</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ScoreNotDecreasing.metric_name"><code class="docutils literal notranslate"><span class="pre">ScoreNotDecreasing.metric_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ScoreNotDecreasing.metric_func"><code class="docutils literal notranslate"><span class="pre">ScoreNotDecreasing.metric_func</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ScoreNotDecreasing.reduction"><code class="docutils literal notranslate"><span class="pre">ScoreNotDecreasing.reduction</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ScoreNotDecreasing.patience"><code class="docutils literal notranslate"><span class="pre">ScoreNotDecreasing.patience</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.AccuracyNotImproving"><code class="docutils literal notranslate"><span class="pre">AccuracyNotImproving</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.AccuracyNotImproving.metric_name"><code class="docutils literal notranslate"><span class="pre">AccuracyNotImproving.metric_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.AccuracyNotImproving.metric_func"><code class="docutils literal notranslate"><span class="pre">AccuracyNotImproving.metric_func</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.AccuracyNotImproving.patience"><code class="docutils literal notranslate"><span class="pre">AccuracyNotImproving.patience</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.FScoreNotImproving"><code class="docutils literal notranslate"><span class="pre">FScoreNotImproving</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.FScoreNotImproving.metric_name"><code class="docutils literal notranslate"><span class="pre">FScoreNotImproving.metric_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.FScoreNotImproving.metric_func"><code class="docutils literal notranslate"><span class="pre">FScoreNotImproving.metric_func</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.FScoreNotImproving.quant"><code class="docutils literal notranslate"><span class="pre">FScoreNotImproving.quant</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.FScoreNotImproving.patience"><code class="docutils literal notranslate"><span class="pre">FScoreNotImproving.patience</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.DeltaFNotDecreasing"><code class="docutils literal notranslate"><span class="pre">DeltaFNotDecreasing</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.DeltaFNotDecreasing.metric_name"><code class="docutils literal notranslate"><span class="pre">DeltaFNotDecreasing.metric_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.DeltaFNotDecreasing.metric_func"><code class="docutils literal notranslate"><span class="pre">DeltaFNotDecreasing.metric_func</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.DeltaFNotDecreasing.patience"><code class="docutils literal notranslate"><span class="pre">DeltaFNotDecreasing.patience</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="bfbrain.html#module-bfbrain.BFB_Learner">bfbrain.BFB_Learner module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.create_seq_network"><code class="docutils literal notranslate"><span class="pre">create_seq_network()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.AL_history"><code class="docutils literal notranslate"><span class="pre">AL_history</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.AL_history.losses"><code class="docutils literal notranslate"><span class="pre">AL_history.losses</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.AL_history.accuracy"><code class="docutils literal notranslate"><span class="pre">AL_history.accuracy</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.AL_history.val_losses"><code class="docutils literal notranslate"><span class="pre">AL_history.val_losses</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.AL_history.val_accuracy"><code class="docutils literal notranslate"><span class="pre">AL_history.val_accuracy</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.AL_history.append_history"><code class="docutils literal notranslate"><span class="pre">AL_history.append_history()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.AL_history.plot_history"><code class="docutils literal notranslate"><span class="pre">AL_history.plot_history()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner"><code class="docutils literal notranslate"><span class="pre">BFBLearner</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner.dm"><code class="docutils literal notranslate"><span class="pre">BFBLearner.dm</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner.model"><code class="docutils literal notranslate"><span class="pre">BFBLearner.model</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner.data_train"><code class="docutils literal notranslate"><span class="pre">BFBLearner.data_train</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner.data_val"><code class="docutils literal notranslate"><span class="pre">BFBLearner.data_val</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner.metrics"><code class="docutils literal notranslate"><span class="pre">BFBLearner.metrics</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner.history"><code class="docutils literal notranslate"><span class="pre">BFBLearner.history</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner.learning_rate"><code class="docutils literal notranslate"><span class="pre">BFBLearner.learning_rate</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner.hop_dist"><code class="docutils literal notranslate"><span class="pre">BFBLearner.hop_dist</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner.rand_fraction"><code class="docutils literal notranslate"><span class="pre">BFBLearner.rand_fraction</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner.idx"><code class="docutils literal notranslate"><span class="pre">BFBLearner.idx</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner.l_constant"><code class="docutils literal notranslate"><span class="pre">BFBLearner.l_constant</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner.init_for_first_run"><code class="docutils literal notranslate"><span class="pre">BFBLearner.init_for_first_run()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner.from_file"><code class="docutils literal notranslate"><span class="pre">BFBLearner.from_file()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner.save_AL_state"><code class="docutils literal notranslate"><span class="pre">BFBLearner.save_AL_state()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner.redefine_model"><code class="docutils literal notranslate"><span class="pre">BFBLearner.redefine_model()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner.set_l_constant"><code class="docutils literal notranslate"><span class="pre">BFBLearner.set_l_constant()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner.add_metrics"><code class="docutils literal notranslate"><span class="pre">BFBLearner.add_metrics()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner.plot_metrics"><code class="docutils literal notranslate"><span class="pre">BFBLearner.plot_metrics()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner.AL_loop"><code class="docutils literal notranslate"><span class="pre">BFBLearner.AL_loop()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#id0"><code class="docutils literal notranslate"><span class="pre">BFBLearner.from_file()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#id1"><code class="docutils literal notranslate"><span class="pre">BFBLearner.init_for_first_run()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#id2"><code class="docutils literal notranslate"><span class="pre">BFBLearner.set_l_constant()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#id3"><code class="docutils literal notranslate"><span class="pre">BFBLearner.save_AL_state()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#id4"><code class="docutils literal notranslate"><span class="pre">BFBLearner.redefine_model()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#id5"><code class="docutils literal notranslate"><span class="pre">BFBLearner.add_metrics()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#id6"><code class="docutils literal notranslate"><span class="pre">BFBLearner.plot_metrics()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner.get_calibration_uncertainties"><code class="docutils literal notranslate"><span class="pre">BFBLearner.get_calibration_uncertainties()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#id7"><code class="docutils literal notranslate"><span class="pre">BFBLearner.AL_loop()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="bfbrain.html#module-bfbrain.Custom_Layers">bfbrain.Custom_Layers module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Custom_Layers.HypersphereProjectionLayer"><code class="docutils literal notranslate"><span class="pre">HypersphereProjectionLayer</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Custom_Layers.HypersphereProjectionLayer.build"><code class="docutils literal notranslate"><span class="pre">HypersphereProjectionLayer.build()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Custom_Layers.HypersphereProjectionLayer.get_config"><code class="docutils literal notranslate"><span class="pre">HypersphereProjectionLayer.get_config()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Custom_Layers.HypersphereProjectionLayer.from_config"><code class="docutils literal notranslate"><span class="pre">HypersphereProjectionLayer.from_config()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Custom_Layers.HypersphereProjectionLayer.call"><code class="docutils literal notranslate"><span class="pre">HypersphereProjectionLayer.call()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Custom_Layers.get_weight_regularizer"><code class="docutils literal notranslate"><span class="pre">get_weight_regularizer()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Custom_Layers.get_dropout_regularizer"><code class="docutils literal notranslate"><span class="pre">get_dropout_regularizer()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Custom_Layers.ConcreteDenseDropout"><code class="docutils literal notranslate"><span class="pre">ConcreteDenseDropout</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Custom_Layers.ConcreteDenseDropout.build"><code class="docutils literal notranslate"><span class="pre">ConcreteDenseDropout.build()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Custom_Layers.ConcreteDenseDropout.spatial_concrete_dropout"><code class="docutils literal notranslate"><span class="pre">ConcreteDenseDropout.spatial_concrete_dropout()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Custom_Layers.ConcreteDenseDropout.call"><code class="docutils literal notranslate"><span class="pre">ConcreteDenseDropout.call()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Custom_Layers.ConcreteDenseDropout.get_config"><code class="docutils literal notranslate"><span class="pre">ConcreteDenseDropout.get_config()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="bfbrain.html#module-bfbrain.Data_Manager">bfbrain.Data_Manager module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.labeller_wrapper"><code class="docutils literal notranslate"><span class="pre">labeller_wrapper</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.labeller_wrapper.func"><code class="docutils literal notranslate"><span class="pre">labeller_wrapper.func</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.labeller_wrapper.phi_len"><code class="docutils literal notranslate"><span class="pre">labeller_wrapper.phi_len</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.labeller_wrapper.lam_len"><code class="docutils literal notranslate"><span class="pre">labeller_wrapper.lam_len</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.labeller_wrapper.rng"><code class="docutils literal notranslate"><span class="pre">labeller_wrapper.rng</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.labeller_wrapper.polar"><code class="docutils literal notranslate"><span class="pre">labeller_wrapper.polar</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.labeller_wrapper.label_fn"><code class="docutils literal notranslate"><span class="pre">labeller_wrapper.label_fn</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.labeller_wrapper.label_check"><code class="docutils literal notranslate"><span class="pre">labeller_wrapper.label_check</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.labeller_wrapper.do_labelling"><code class="docutils literal notranslate"><span class="pre">labeller_wrapper.do_labelling()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.labeller_wrapper.check_labeller"><code class="docutils literal notranslate"><span class="pre">labeller_wrapper.check_labeller()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.np_data"><code class="docutils literal notranslate"><span class="pre">np_data</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.np_data.pos"><code class="docutils literal notranslate"><span class="pre">np_data.pos</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.np_data.neg"><code class="docutils literal notranslate"><span class="pre">np_data.neg</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.np_data.from_file"><code class="docutils literal notranslate"><span class="pre">np_data.from_file()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.np_data.save_data"><code class="docutils literal notranslate"><span class="pre">np_data.save_data()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.np_data.append_data"><code class="docutils literal notranslate"><span class="pre">np_data.append_data()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.np_data.n_elements"><code class="docutils literal notranslate"><span class="pre">np_data.n_elements()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager"><code class="docutils literal notranslate"><span class="pre">DataManager</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager.phi_len"><code class="docutils literal notranslate"><span class="pre">DataManager.phi_len</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager.lam_len"><code class="docutils literal notranslate"><span class="pre">DataManager.lam_len</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager.rng"><code class="docutils literal notranslate"><span class="pre">DataManager.rng</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager.polar"><code class="docutils literal notranslate"><span class="pre">DataManager.polar</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager.sym_expr"><code class="docutils literal notranslate"><span class="pre">DataManager.sym_expr</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager.sym_grad_expr"><code class="docutils literal notranslate"><span class="pre">DataManager.sym_grad_expr</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager.phisym_var"><code class="docutils literal notranslate"><span class="pre">DataManager.phisym_var</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager.lamsym"><code class="docutils literal notranslate"><span class="pre">DataManager.lamsym</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager.lambdify_mode"><code class="docutils literal notranslate"><span class="pre">DataManager.lambdify_mode</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager.label_fn"><code class="docutils literal notranslate"><span class="pre">DataManager.label_fn</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager.label_check"><code class="docutils literal notranslate"><span class="pre">DataManager.label_check</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager.from_func"><code class="docutils literal notranslate"><span class="pre">DataManager.from_func()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager.create_random_lambdas"><code class="docutils literal notranslate"><span class="pre">DataManager.create_random_lambdas()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager.check_labeller"><code class="docutils literal notranslate"><span class="pre">DataManager.check_labeller()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager.checklam_all"><code class="docutils literal notranslate"><span class="pre">DataManager.checklam_all()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager.create_data"><code class="docutils literal notranslate"><span class="pre">DataManager.create_data()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager.create_random_data"><code class="docutils literal notranslate"><span class="pre">DataManager.create_random_data()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager.check_accuracy_with_better_labeller"><code class="docutils literal notranslate"><span class="pre">DataManager.check_accuracy_with_better_labeller()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager.balance_array"><code class="docutils literal notranslate"><span class="pre">DataManager.balance_array()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager.create_dataset"><code class="docutils literal notranslate"><span class="pre">DataManager.create_dataset()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager.generate_L"><code class="docutils literal notranslate"><span class="pre">DataManager.generate_L()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="bfbrain.html#module-bfbrain.False_Proximity_Test">bfbrain.False_Proximity_Test module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.False_Proximity_Test.combined_false_score"><code class="docutils literal notranslate"><span class="pre">combined_false_score()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.False_Proximity_Test.get_false_pos_and_neg_tf"><code class="docutils literal notranslate"><span class="pre">get_false_pos_and_neg_tf()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="bfbrain.html#module-bfbrain.Hypersphere_Formulas">bfbrain.Hypersphere_Formulas module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Hypersphere_Formulas.convert_from_polar"><code class="docutils literal notranslate"><span class="pre">convert_from_polar()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Hypersphere_Formulas.convert_to_polar"><code class="docutils literal notranslate"><span class="pre">convert_to_polar()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Hypersphere_Formulas.jax_convert_to_polar"><code class="docutils literal notranslate"><span class="pre">jax_convert_to_polar()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Hypersphere_Formulas.jax_convert_from_polar"><code class="docutils literal notranslate"><span class="pre">jax_convert_from_polar()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Hypersphere_Formulas.rand_nsphere"><code class="docutils literal notranslate"><span class="pre">rand_nsphere()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Hypersphere_Formulas.cumprod_sym"><code class="docutils literal notranslate"><span class="pre">cumprod_sym()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Hypersphere_Formulas.convert_from_polar_sym"><code class="docutils literal notranslate"><span class="pre">convert_from_polar_sym()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="bfbrain.html#module-bfbrain.Jax_Oracle">bfbrain.Jax_Oracle module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Jax_Oracle.take_step"><code class="docutils literal notranslate"><span class="pre">take_step()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Jax_Oracle.run_one_step"><code class="docutils literal notranslate"><span class="pre">run_one_step()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Jax_Oracle.jax_basinhopping"><code class="docutils literal notranslate"><span class="pre">jax_basinhopping()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Jax_Oracle.vectorized_minTest"><code class="docutils literal notranslate"><span class="pre">vectorized_minTest()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Jax_Oracle.label_func"><code class="docutils literal notranslate"><span class="pre">label_func()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Jax_Oracle.label_func_do_batch"><code class="docutils literal notranslate"><span class="pre">label_func_do_batch()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Jax_Oracle.test_labeller"><code class="docutils literal notranslate"><span class="pre">test_labeller()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="bfbrain.html#module-bfbrain.Potential_Functions">bfbrain.Potential_Functions module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Potential_Functions.V_Precustodial"><code class="docutils literal notranslate"><span class="pre">V_Precustodial()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Potential_Functions.V_GM"><code class="docutils literal notranslate"><span class="pre">V_GM()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Potential_Functions.V_2HDM"><code class="docutils literal notranslate"><span class="pre">V_2HDM()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Potential_Functions.V_3HDM"><code class="docutils literal notranslate"><span class="pre">V_3HDM()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Potential_Functions.V_3HDM_U1"><code class="docutils literal notranslate"><span class="pre">V_3HDM_U1()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="bfbrain.html#module-bfbrain.Score_Functions">bfbrain.Score_Functions module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Score_Functions.MC_call_full"><code class="docutils literal notranslate"><span class="pre">MC_call_full()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Score_Functions.MC_call_fast"><code class="docutils literal notranslate"><span class="pre">MC_call_fast()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Score_Functions.QBDC"><code class="docutils literal notranslate"><span class="pre">QBDC()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Score_Functions.Max_Entropy"><code class="docutils literal notranslate"><span class="pre">Max_Entropy()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Score_Functions.BALD"><code class="docutils literal notranslate"><span class="pre">BALD()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Score_Functions.Predictive_Variance"><code class="docutils literal notranslate"><span class="pre">Predictive_Variance()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Score_Functions.Variation_Ratios"><code class="docutils literal notranslate"><span class="pre">Variation_Ratios()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="bfbrain.html#bfbrain.Score_Functions.Random_AL"><code class="docutils literal notranslate"><span class="pre">Random_AL()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="bfbrain.html#module-bfbrain">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">bfbrain</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial and User Guide</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">BFBrain</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="bfbrain.html">bfbrain package</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="analysis.html" title="previous chapter">Tutorial Step 4: Analysis</a></li>
+      <li>Next: <a href="bfbrain.html" title="next chapter">bfbrain package</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, George Wojcik.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.2.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
+      
+      |
+      <a href="_sources/modules.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

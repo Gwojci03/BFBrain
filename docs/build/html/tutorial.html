@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Tutorial and User Guide &#8212; bfbrain 1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b3523f8e" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=039e1c02" />
+    <script src="_static/documentation_options.js?v=f2a433a1"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Tutorial Step 1: Oracle and Data Generation" href="data_manager.html" />
+    <link rel="prev" title="Usage" href="usage.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="tutorial-and-user-guide">
+<span id="tutorial"></span><h1>Tutorial and User Guide<a class="headerlink" href="#tutorial-and-user-guide" title="Link to this heading">¶</a></h1>
+<p>Here we present a more in-depth step-by-step detailed guide to implementing a BFBrain analysis than in <a class="reference internal" href="usage.html"><span class="doc">Usage</span></a>, including a detailed breakdown of each step and
+discussion of advanced features and finer usage points that are less well-described as part of <a class="reference internal" href="modules.html"><span class="doc">the reference documentation</span></a>. After following this tutorial, a user
+should be able to use all of BFBrain’s features and rapidly and produce highly accurate approximations of scalar bounded-from-below conditions for arbitrary renormalizable scalar
+potentials with minimal up-front effort.</p>
+<p>Before beginning, it is useful to establish some familiarity with the basics of active learning as used in BFBrain. Much of this information is repeated in our paper introducing BFBrain <a class="footnote-reference brackets" href="#id3" id="id1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a>,
+and so a reader familiar with the contents of that work can readily skip straight to <a class="reference internal" href="data_manager.html#oracle"><span class="std std-ref">step one of the tutorial</span></a>.</p>
+<p>BFBrain’s purpose is to create an efficiently-evaluated neural network classifier that can serve as a good approximation to scalar bounded-from-below conditions in parameter space scans of BSM theories
+where it is computationally expensive to evaluate boundedness-from-below numerically and exact symbolic expressions do not exist. It creates this classifier via <em>active learning</em>, following these fundamental
+steps:</p>
+<ol class="arabic simple">
+<li><p>A <em>classifier</em> is trained to convergence on a set of training points in the scalar model’s parameter space labelled as bounded-from-below or not by some computationally expensive <em>oracle</em></p></li>
+<li><p>A large number of new unlabelled points are proposed to the classifier as possible new additions to the training set.</p></li>
+<li><p>The pool of candidate points are scored according to some <em>query strategy</em> which estimates the degree of uncertainty that the neural network has about its prediction for a given point. The highest-scoring (most uncertain) points are labelled by the oracle and added to the training data.</p></li>
+<li><p>A new classifier is trained to convergence on the training set, which now features all of the old training data as well as the points that were chosen based on the query strategy in the previous step.</p></li>
+<li><p>Steps 2-4 are repeated for a prespecified number of cycles (active learning iterations).</p></li>
+</ol>
+<p>After completing training, the classifier produced by BFBrain is saved in a portable format as a Tensorflow model, which can be loaded and used for predictions on points in scans of parameter space on any device
+with Tensorflow installed. Because BFBrain’s classifiers are Bayesian neural networks approximated by concrete dropout <a class="footnote-reference brackets" href="#id4" id="id2" role="doc-noteref"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></a>, useful metrics of multiple sources of uncertainty can be extracted from their outputs.
+These uncertainty metrics can in turn be used to estimate the reliability of the neural network’s predictions on unknown data, improving the utility of an already highly performant classifier.</p>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Tutorial:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="data_manager.html">Tutorial Step 1: Oracle and Data Generation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="data_manager.html#writing-the-potential-function">Writing the Potential Function</a></li>
+<li class="toctree-l2"><a class="reference internal" href="data_manager.html#datamanager">DataManager</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="classifier.html">Tutorial Step 2: Initializing the Classifier</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="classifier.html#performance-metrics">Performance Metrics</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="training.html">Tutorial Step 3: Training</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="training.html#options-in-the-active-learning-loop">Options in the Active Learning Loop</a></li>
+<li class="toctree-l2"><a class="reference internal" href="training.html#score-fn-uncertainty-quantification-options">score_fn: Uncertainty Quantification Options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="training.html#advanced-usage-stopping-criteria">Advanced Usage: Stopping Criteria</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="analysis.html">Tutorial Step 4: Analysis</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="analysis.html#advanced-usage-loading-the-model-outside-of-bfbrain">Advanced Usage: Loading the Model Outside of BFBrain</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<aside class="footnote-list brackets">
+<aside class="footnote brackets" id="id3" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">1</a><span class="fn-bracket">]</span></span>
+<p>Wojcik, George. In Preparation [arXiv:2309.XXXXX]</p>
+</aside>
+<aside class="footnote brackets" id="id4" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id2">2</a><span class="fn-bracket">]</span></span>
+<p>Gal, Yarin, Jiri Hron, and Alex Kendall. “Concrete dropout.” Advances in neural information processing systems 30 (2017).</p>
+</aside>
+</aside>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">bfbrain</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Tutorial and User Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="data_manager.html">Tutorial Step 1: Oracle and Data Generation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="classifier.html">Tutorial Step 2: Initializing the Classifier</a></li>
+<li class="toctree-l2"><a class="reference internal" href="training.html">Tutorial Step 3: Training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="analysis.html">Tutorial Step 4: Analysis</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">BFBrain</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="usage.html" title="previous chapter">Usage</a></li>
+      <li>Next: <a href="data_manager.html" title="next chapter">Tutorial Step 1: Oracle and Data Generation</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, George Wojcik.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.2.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
+      
+      |
+      <a href="_sources/tutorial.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

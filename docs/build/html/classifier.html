@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Tutorial Step 2: Initializing the Classifier &#8212; bfbrain 1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b3523f8e" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=039e1c02" />
+    <script src="_static/documentation_options.js?v=f2a433a1"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Tutorial Step 3: Training" href="training.html" />
+    <link rel="prev" title="Tutorial Step 1: Oracle and Data Generation" href="data_manager.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="tutorial-step-2-initializing-the-classifier">
+<span id="classifier"></span><h1>Tutorial Step 2: Initializing the Classifier<a class="headerlink" href="#tutorial-step-2-initializing-the-classifier" title="Link to this heading">¶</a></h1>
+<p>After initializing the oracle wrapped in a <a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager" title="bfbrain.Data_Manager.DataManager"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataManager</span></code></a> object, the next step of a BFBrain analysis is to initialize the classifier which will be trained to predict whether
+points in parameter space are bounded-from-below. This is done by initializing a <a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner" title="bfbrain.BFB_Learner.BFBLearner"><code class="xref py py-class docutils literal notranslate"><span class="pre">BFBLearner</span></code></a> object. The <a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner" title="bfbrain.BFB_Learner.BFBLearner"><code class="xref py py-class docutils literal notranslate"><span class="pre">BFBLearner</span></code></a> object
+contains a variety of data and objects, most notably:</p>
+<ul class="simple">
+<li><p>The neural network that shall act as the classifier (a Bayesian neural network approximated using concrete dropout <a class="footnote-reference brackets" href="#id4" id="id1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a>)</p></li>
+<li><p>User-specified performance metrics gathered during each active learning iteration</p></li>
+<li><p>The <a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager" title="bfbrain.Data_Manager.DataManager"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataManager</span></code></a> object initialized before training.</p></li>
+</ul>
+<p>The full <a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner" title="bfbrain.BFB_Learner.BFBLearner"><code class="xref py py-class docutils literal notranslate"><span class="pre">BFBLearner</span></code></a> object can be saved and loaded in order to resume training after an initial training script finishes, or
+to access and use a fully trained classifier for numerical studies. Instantiating the object for the first time should be done with <a class="reference internal" href="bfbrain.html#id1" title="bfbrain.BFB_Learner.BFBLearner.init_for_first_run"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BFBLearner.init_for_first_run</span></code></a>.
+A typical example of a constructor, following the example 2HDM <a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager" title="bfbrain.Data_Manager.DataManager"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataManager</span></code></a> that we instantiated in <a class="reference internal" href="data_manager.html#defaultoracle"><span class="std std-ref">the previous section of the tutorial</span></a>,
+is given by</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bfbrain</span> <span class="kn">import</span> <span class="n">BFBLearner</span><span class="p">,</span> <span class="n">ValidationFScore</span><span class="p">,</span> <span class="n">UnlabelledDeltaF</span>
+
+<span class="c1"># Running this line should take a few minutes, due to the need to label the validation set.</span>
+<span class="n">AL</span> <span class="o">=</span> <span class="n">BFBLearner</span><span class="o">.</span><span class="n">init_for_first_run</span><span class="p">(</span><span class="n">dm</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="p">[</span><span class="n">ValidationFScore</span><span class="p">(),</span> <span class="n">UnlabelledDeltaF</span><span class="p">(</span><span class="n">dm</span><span class="o">.</span><span class="n">create_random_lambdas</span><span class="p">(</span><span class="mi">1000000</span><span class="p">,</span> <span class="n">validation</span> <span class="o">=</span> <span class="kc">True</span><span class="p">))],</span> <span class="mi">1000</span><span class="p">)</span>
+
+<span class="c1"># After initializing the constructor, it&#39;s a good idea to save a backup in case we want to modify</span>
+<span class="c1"># without relabelling a whole new validation and initial training set.</span>
+<span class="n">AL</span><span class="o">.</span><span class="n">save_AL_state</span><span class="p">(</span><span class="s1">&#39;saved_AL_untrained&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In the above constructor, we have specified that we should use our previously defined <a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager" title="bfbrain.Data_Manager.DataManager"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataManager</span></code></a>, dm, build a classifier with five hidden layers
+and 128 neurons per layer, and produce an initial training set of 1000 uniformly sampled points in the space of quartic coefficients. The classifier should also keep track of
+two performance metrics during each round: The <span class="math notranslate nohighlight">\(F_1\)</span> score of the classifier on a separate uniformly sampled validation set that is by default 100 times larger than the specified initial training set size
+(so in our case consisting of <span class="math notranslate nohighlight">\(10^5\)</span> points), and the <em>estimated</em> change in the <span class="math notranslate nohighlight">\(F_1\)</span> score over an even larger, but unlabelled, uniformly sampled set, which we
+determine via the procedure discussed in <a class="footnote-reference brackets" href="#id5" id="id2" role="doc-noteref"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></a>. Note that a validation set will only be produced if one of the performance metrics specified in the list passed to the
+constructor (in this case <a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ValidationFScore" title="bfbrain.AL_Metrics.ValidationFScore"><code class="xref py py-class docutils literal notranslate"><span class="pre">ValidationFScore</span></code></a>) requires a validation data set– otherwise the constructor will not engage in the likely computationally expensive
+task of labelling such a set with the oracle function.</p>
+<p>Meanwhile, we have also taken the liberty of using BFBrain’s serialization capabilities to save a backup of our untrained <a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner" title="bfbrain.BFB_Learner.BFBLearner"><code class="xref py py-class docutils literal notranslate"><span class="pre">BFBLearner</span></code></a> object under in a new directory,
+‘saved_AL_untrained’. We can now load this <a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner" title="bfbrain.BFB_Learner.BFBLearner"><code class="xref py py-class docutils literal notranslate"><span class="pre">BFBLearner</span></code></a> later on, for example in <a class="reference internal" href="training.html#training"><span class="std std-ref">the next step of the tutorial</span></a>. Saving and loading the
+<a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner" title="bfbrain.BFB_Learner.BFBLearner"><code class="xref py py-class docutils literal notranslate"><span class="pre">BFBLearner</span></code></a> object can also allow us to experiment more easily with different hyperparameters, especially in cases where the constructor is expensive to run.
+As an example, we can load a copy of our untrained network and adjust a number of aspects of the <a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner" title="bfbrain.BFB_Learner.BFBLearner"><code class="xref py py-class docutils literal notranslate"><span class="pre">BFBLearner</span></code></a> object before training.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Demonstrate loading and adjusting hyperparameters here.</span>
+<span class="kn">from</span> <span class="nn">bfbrain</span> <span class="kn">import</span> <span class="n">MCModelEvaluation</span>
+
+<span class="c1"># Load the BFBLearner we just saved. It should be a copy of AL.</span>
+<span class="n">loaded_AL</span> <span class="o">=</span> <span class="n">BFBLearner</span><span class="o">.</span><span class="n">from_file</span><span class="p">(</span><span class="s1">&#39;saved_AL_untrained&#39;</span><span class="p">)</span>
+
+<span class="c1"># Redefine the model to feature 3 layers of 256 neurons instead of 5 layers of 128 neurons.</span>
+<span class="n">loaded_AL</span><span class="o">.</span><span class="n">redefine_model</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">256</span><span class="p">)</span>
+
+<span class="c1"># Adjust the prior length scale l (weights have a Bayesian prior of N(0, 1/l**2))</span>
+<span class="n">loaded_AL</span><span class="o">.</span><span class="n">set_l_constant</span><span class="p">(</span><span class="mf">0.01</span><span class="p">)</span>
+
+<span class="c1"># Add a new performance metric.</span>
+<span class="n">loaded_AL</span><span class="o">.</span><span class="n">add_metrics</span><span class="p">(</span><span class="n">MCModelEvaluation</span><span class="p">())</span>
+</pre></div>
+</div>
+<section id="performance-metrics">
+<span id="metrics"></span><h2>Performance Metrics<a class="headerlink" href="#performance-metrics" title="Link to this heading">¶</a></h2>
+<p>There are a variety of performance metrics which a user can have BFBrain track during active learning, any/all of which can be implemented by including them in the list of metrics required by
+<a class="reference internal" href="bfbrain.html#id1" title="bfbrain.BFB_Learner.BFBLearner.init_for_first_run"><code class="xref py py-meth docutils literal notranslate"><span class="pre">init_for_first_run</span></code></a>.</p>
+<p>For tracking classifier performance, we recommend (in no particular order):</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ModelEvaluation" title="bfbrain.AL_Metrics.ModelEvaluation"><code class="xref py py-class docutils literal notranslate"><span class="pre">ModelEvaluation</span></code></a> and <a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.MCModelEvaluation" title="bfbrain.AL_Metrics.MCModelEvaluation"><code class="xref py py-class docutils literal notranslate"><span class="pre">MCModelEvaluation</span></code></a>: These metrics track the binary accuracy, number of false positives, and number of false negatives that the classifier produces on a validation set.</p></li>
+<li><p><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ValidationFScore" title="bfbrain.AL_Metrics.ValidationFScore"><code class="xref py py-class docutils literal notranslate"><span class="pre">ValidationFScore</span></code></a>: This metric computes the <span class="math notranslate nohighlight">\(F_1\)</span> score that the classifier attains on a labelled validation set, which will in general be more informative about classifier performance than the binary accuracy, since validation sets will generally be highly unbalanced in favor of the not bounded-from-below class. Because the neural network model is also capable of quantifying uncertainty through several means (see <a class="reference internal" href="bfbrain.html#module-bfbrain.Score_Functions" title="bfbrain.Score_Functions"><code class="xref py py-mod docutils literal notranslate"><span class="pre">bfbrain.Score_Functions</span></code></a> for details), it will further compute the <span class="math notranslate nohighlight">\(F_1\)</span> score when points that have a higher uncertainty score than some quantile of the points with the same predicted label are omitted from the validation set. The quantiles that are used here can be user-specified.</p></li>
+<li><p><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.UnlabelledDeltaF" title="bfbrain.AL_Metrics.UnlabelledDeltaF"><code class="xref py py-class docutils literal notranslate"><span class="pre">UnlabelledDeltaF</span></code></a>: This metric computes and <em>estimated change</em> in <span class="math notranslate nohighlight">\(F_1\)</span> on an <em>unlabelled</em> user-specified set of inputs between successive rounds of active learning, following <a class="footnote-reference brackets" href="#id5" id="id3" role="doc-noteref"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></a>. This allows a user to gauge improving model performance (as the model improves, <span class="math notranslate nohighlight">\(\Delta F_1\)</span> will approach 0) without needing to use the oracle to label a large validation data set, with the caveat that the <em>estimated</em> <span class="math notranslate nohighlight">\(\Delta F_1\)</span> values tend to significantly overestimate the <em>actual</em> change in <span class="math notranslate nohighlight">\(F_1\)</span> score if the set were labelled with the oracle– however the metric will still decrease steadily as the classifier performance improves.</p></li>
+</ul>
+<p>For a comprehensive list of available performance metrics and their options, we refer the reader to the documentation for <a class="reference internal" href="bfbrain.html#module-bfbrain.AL_Metrics" title="bfbrain.AL_Metrics"><code class="xref py py-mod docutils literal notranslate"><span class="pre">the</span> <span class="pre">performance</span> <span class="pre">metrics</span> <span class="pre">module</span></code></a>. All performance metrics
+in BFBrain contain an object called <a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ALMetric.status_history" title="bfbrain.AL_Metrics.ALMetric.status_history"><code class="xref py py-attr docutils literal notranslate"><span class="pre">status_history</span></code></a> which records the information that the metric wishes to track (usually a number of some sort, or a list numbers, or a tuple of lists of numbers) during each
+round of active learning– the elements of <a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ALMetric.status_history" title="bfbrain.AL_Metrics.ALMetric.status_history"><code class="xref py py-attr docutils literal notranslate"><span class="pre">status_history</span></code></a> then correspond to the values of the metric recorded for a given round. Before using a particular performance metric for the first time, it is <strong>highly</strong>
+recommended that a user read its documentation and familiarize themselves with what form the elements of <a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ALMetric.status_history" title="bfbrain.AL_Metrics.ALMetric.status_history"><code class="xref py py-attr docutils literal notranslate"><span class="pre">status_history</span></code></a> take.</p>
+<p>In addition to recording information, all performance metric objects feature methods which allow for human-readable printouts of their values during training and easy plotting of their results
+for inspection after training. During training, BFBrain metrics will report the values of their tracked metrics to a .txt file after each round of active learning, as well as (if the user requests it)
+print them to the console. For example, <a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.MCModelEvaluation" title="bfbrain.AL_Metrics.MCModelEvaluation"><code class="xref py py-class docutils literal notranslate"><span class="pre">MCModelEvaluation</span></code></a> will, at the end of each round, report a message of the form</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">MC</span> <span class="n">validation</span> <span class="n">accuracy</span> <span class="p">[</span><span class="n">accuracy</span><span class="p">,</span> <span class="n">false</span> <span class="n">positives</span><span class="p">,</span> <span class="n">false</span> <span class="n">negatives</span><span class="p">]:</span>
+<span class="p">[</span><span class="o">&lt;</span><span class="n">accuracy</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">false</span> <span class="n">positives</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">false</span> <span class="n">negatives</span><span class="o">&gt;</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>with the appropriate values instead of each carated entry in the above. Metrics that have tuples as entries in <a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ALMetric.status_history" title="bfbrain.AL_Metrics.ALMetric.status_history"><code class="xref py py-attr docutils literal notranslate"><span class="pre">status_history</span></code></a> instead report each result with
+different headings for each tuple entry– this can be useful for metrics like <a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ValidationFScore" title="bfbrain.AL_Metrics.ValidationFScore"><code class="xref py py-class docutils literal notranslate"><span class="pre">ValidationFScore</span></code></a>, which tracks three different quantities (precision, recall, and <span class="math notranslate nohighlight">\(F_1\)</span> score)
+for validation sets where points which exceed specified uncertainty quantiles are omitted. The form of the printouts for this metric are</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">val_</span><span class="o">&lt;</span><span class="n">uncertainty</span><span class="o">&gt;</span><span class="n">_fscore</span> <span class="p">(</span><span class="n">validation</span> <span class="n">precision</span><span class="p">)</span> <span class="p">[</span><span class="o">&lt;</span><span class="n">quantile1</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">quantile2</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+<span class="p">[</span><span class="o">&lt;</span><span class="n">precision1</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">precision2</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+<span class="n">val_</span><span class="o">&lt;</span><span class="n">uncertainty</span><span class="o">&gt;</span><span class="n">_fscore</span> <span class="p">(</span><span class="n">validation</span> <span class="n">recall</span><span class="p">)</span> <span class="p">[</span><span class="o">&lt;</span><span class="n">quantile1</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">quantile2</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+<span class="p">[</span><span class="o">&lt;</span><span class="n">recall1</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">recall2</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+<span class="n">val_</span><span class="o">&lt;</span><span class="n">uncertainty</span><span class="o">&gt;</span><span class="n">_fscore</span> <span class="p">(</span><span class="n">validation</span> <span class="n">F</span> <span class="n">score</span><span class="p">)</span> <span class="p">[</span><span class="o">&lt;</span><span class="n">quantile1</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">quantile2</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+<span class="p">[</span><span class="o">&lt;</span><span class="n">fscore1</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">fscore2</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>where again carated quantities are replaced with the appropriate values– &lt;uncertainty&gt; refers to the method used to estimate the model uncertainty, in this case used to exclude points in the validation set from
+the computation of the precision, recall, and <span class="math notranslate nohighlight">\(F_1\)</span> score– we shall discuss these in detail in <a class="reference internal" href="training.html"><span class="doc">Tutorial Step 3: Training</span></a>.</p>
+<p>The final convenience method for performance metrics in BFBrain relates to their plotting– BFBrain metrics can automatically produce simple plots of their results in order to give a user a
+visual sense of the results of their experiments. This is accomplished simply by calling <a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ALMetric.plot_metric" title="bfbrain.AL_Metrics.ALMetric.plot_metric"><code class="xref py py-meth docutils literal notranslate"><span class="pre">plot_metric</span></code></a>, which will plot the metric in the console or to a specified
+.png file. We shall use this capability in <a class="reference internal" href="training.html"><span class="doc">Tutorial Step 3: Training</span></a> to observe the results of our training.</p>
+<section id="advanced-usage-custom-performance-metrics">
+<span id="custommetrics"></span><h3>Advanced Usage: Custom Performance Metrics<a class="headerlink" href="#advanced-usage-custom-performance-metrics" title="Link to this heading">¶</a></h3>
+<p>In addition to the selection of performance metrics that are implemented as part of BFBrain, users may create their own customized performance metrics by writing classes that inherit from
+the abstract class <a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ALMetric" title="bfbrain.AL_Metrics.ALMetric"><code class="xref py py-class docutils literal notranslate"><span class="pre">ALMetric</span></code></a>, or one of several abstract child classes that we have implemented for convenience. It should be noted that creating a
+customized performance metric is highly involved, and in almost all cases a user should be able to extract performance metric information from any of BFBrain’s pre-implemented metrics–
+a user may only wish to read this section if they find they have a need of a performance metric not implemented in <a class="reference internal" href="bfbrain.html#module-bfbrain.AL_Metrics" title="bfbrain.AL_Metrics"><code class="xref py py-mod docutils literal notranslate"><span class="pre">the</span> <span class="pre">performance</span> <span class="pre">metrics</span> <span class="pre">module</span></code></a>.</p>
+<p>To outline the basic steps of implementing a new metric, it is easiest to demonstrate the implementation of a simple custom metric, so we create the custom metric TrainPosFraction.
+At each round of active learning, after a new set of points has been selected to be added to the training data and labelled, this metric computes the fraction of these points which
+the oracle has labelled as bounded-from-below, and records them in <a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ALMetric.status_history" title="bfbrain.AL_Metrics.ALMetric.status_history"><code class="xref py py-attr docutils literal notranslate"><span class="pre">status_history</span></code></a> for later analysis.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bfbrain</span> <span class="kn">import</span> <span class="n">TrainMetric</span>
+
+<span class="k">class</span> <span class="nc">TrainPosFraction</span><span class="p">(</span><span class="n">TrainMetric</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Implement a new metric which records the fraction of</span>
+<span class="sd">    each newly-added set of training points that the</span>
+<span class="sd">    oracle labels as positive.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;pos_fraction&#39;</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">performance_check</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">lams</span><span class="p">,</span> <span class="n">labels</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The class overwrites the superclass&#39;s abstract</span>
+<span class="sd">        performance_check method with a concrete</span>
+<span class="sd">        computation. This is the value that is recorded</span>
+<span class="sd">        in the performance metric&#39;s status_history object.</span>
+<span class="sd">        Notice that although not all arguments are used in the</span>
+<span class="sd">        computation of this result, the arguments of</span>
+<span class="sd">        performance_check are set by the parent class.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>To implement the above metric, we needed to take two steps: First, we needed to identify what information the metric needed from the <a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner" title="bfbrain.BFB_Learner.BFBLearner"><code class="xref py py-class docutils literal notranslate"><span class="pre">BFBLearner</span></code></a> object.
+Since our metric uses the new training data generated during each active learning iteration, we determined that it should inherit from the <a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.TrainMetric" title="bfbrain.AL_Metrics.TrainMetric"><code class="xref py py-class docutils literal notranslate"><span class="pre">TrainMetric</span></code></a> child class of <a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ALMetric" title="bfbrain.AL_Metrics.ALMetric"><code class="xref py py-class docutils literal notranslate"><span class="pre">ALMetric</span></code></a>.
+Second, we needed to specify the abstract <a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.TrainMetric.performance_check" title="bfbrain.AL_Metrics.TrainMetric.performance_check"><code class="xref py py-meth docutils literal notranslate"><span class="pre">performance_check</span></code></a> method with a concrete method that would return the quantity that
+we wished the metric to record.</p>
+<p>The approach to implementing general custom metrics follows this pattern. First, we identify the information from the <a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner" title="bfbrain.BFB_Learner.BFBLearner"><code class="xref py py-class docutils literal notranslate"><span class="pre">BFBLearner</span></code></a> object that the
+metric requires. BFBrain supports five types of metrics, each of which have a corresponding child class of <a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ALMetric" title="bfbrain.AL_Metrics.ALMetric"><code class="xref py py-class docutils literal notranslate"><span class="pre">ALMetric</span></code></a> that can serve as a basis for customization. They are:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ValidationMetric" title="bfbrain.AL_Metrics.ValidationMetric"><code class="xref py py-class docutils literal notranslate"><span class="pre">ValidationMetric</span></code></a>: These metrics track the predictions of a <a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner" title="bfbrain.BFB_Learner.BFBLearner"><code class="xref py py-class docutils literal notranslate"><span class="pre">BFBLearner</span></code></a>’s model on a labelled set of validation data. They are computed at the end of each active learning step. An example of a fully implemented metric of this class is <code class="xref py py-class docutils literal notranslate"><span class="pre">MCModelValidation</span></code>.</p></li>
+<li><p><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.TrainMetric" title="bfbrain.AL_Metrics.TrainMetric"><code class="xref py py-class docutils literal notranslate"><span class="pre">TrainMetric</span></code></a>: These metrics track the predictions of a <a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner" title="bfbrain.BFB_Learner.BFBLearner"><code class="xref py py-class docutils literal notranslate"><span class="pre">BFBLearner</span></code></a>’s model on the new labelled data that is appended to the training set during each active learning round. They are computed immediately after the new training data is appended to the training set, before the network is trained on the new data. An example of a fully implemented metric of this class is <a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.NewDataScore" title="bfbrain.AL_Metrics.NewDataScore"><code class="xref py py-class docutils literal notranslate"><span class="pre">NewDataScore</span></code></a>.</p></li>
+<li><p><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolMetric" title="bfbrain.AL_Metrics.PoolMetric"><code class="xref py py-class docutils literal notranslate"><span class="pre">PoolMetric</span></code></a>: These metrics track the predictions of a <a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner" title="bfbrain.BFB_Learner.BFBLearner"><code class="xref py py-class docutils literal notranslate"><span class="pre">BFBLearner</span></code></a>’s model on the unlabelled pool of candidate points from which training data is drawn during each active learning round. Because the pool is produced and evaluated in a series of discrete manageable batches of points, this metric is computed immediately after each batch of pool points is produced in active learning, and then the metric’s computations on each batch are merged into a single entry of <a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ALMetric.status_history" title="bfbrain.AL_Metrics.ALMetric.status_history"><code class="xref py py-attr docutils literal notranslate"><span class="pre">status_history</span></code></a>. It is highly recommended to <strong>thoroughly</strong> inspect the documentation and source code of <a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolMetric" title="bfbrain.AL_Metrics.PoolMetric"><code class="xref py py-class docutils literal notranslate"><span class="pre">PoolMetric</span></code></a> before attempting to implement a metric of this class, since the procedure here is considerably more complex than for other metric types. An example of a fully implemented metric of this type is <a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolScore" title="bfbrain.AL_Metrics.PoolScore"><code class="xref py py-class docutils literal notranslate"><span class="pre">PoolScore</span></code></a></p></li>
+<li><p><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ModelMetric" title="bfbrain.AL_Metrics.ModelMetric"><code class="xref py py-class docutils literal notranslate"><span class="pre">ModelMetric</span></code></a>: These metrics are a catch-all category for any class of metric that only requires the model from the <a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner" title="bfbrain.BFB_Learner.BFBLearner"><code class="xref py py-class docutils literal notranslate"><span class="pre">BFBLearner</span></code></a> object to record their values. Because other information can be stored in the specific object, this type of metric can be used to make a variety of different computations, for example observing aspects of the weights of the network or the predicted labels on some external dataset. They are computed at the end of each active learning iteration. There are no direct implemented versions of this type of metric in BFBrain, although <a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.UnlabelledPredsMetric" title="bfbrain.AL_Metrics.UnlabelledPredsMetric"><code class="xref py py-class docutils literal notranslate"><span class="pre">UnlabelledPredsMetric</span></code></a> inherits from this class.</p></li>
+<li><p><a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.UnlabelledPredsMetric" title="bfbrain.AL_Metrics.UnlabelledPredsMetric"><code class="xref py py-class docutils literal notranslate"><span class="pre">UnlabelledPredsMetric</span></code></a>: These metrics are a special case of <a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ModelMetric" title="bfbrain.AL_Metrics.ModelMetric"><code class="xref py py-class docutils literal notranslate"><span class="pre">ModelMetric</span></code></a> that hold an internal set of unlabelled input points, so that the predictions of the model along these points can be tracked. A fully implemented metric of this type is <a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.UnlabelledDeltaF" title="bfbrain.AL_Metrics.UnlabelledDeltaF"><code class="xref py py-class docutils literal notranslate"><span class="pre">UnlabelledDeltaF</span></code></a>.</p></li>
+</ul>
+<p>For metrics that inherit from any of these types except <a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.PoolMetric" title="bfbrain.AL_Metrics.PoolMetric"><code class="xref py py-class docutils literal notranslate"><span class="pre">PoolMetric</span></code></a>, the procedure to implementing a metric of this type can be as simple as implementing
+the abstract <a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ALMetric.performance_check" title="bfbrain.AL_Metrics.ALMetric.performance_check"><code class="xref py py-meth docutils literal notranslate"><span class="pre">performance_check</span></code></a> method to return whatever value(s) the user wishes to record, ensuring that the arguments for their implementation
+match the method’s arguments in the documentation of the appropriate parent class. If <a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ALMetric.performance_check" title="bfbrain.AL_Metrics.ALMetric.performance_check"><code class="xref py py-meth docutils literal notranslate"><span class="pre">performance_check</span></code></a> returns a more complex structure than a single
+number, then it will likely be necessary to overwrite some other methods of <a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ALMetric" title="bfbrain.AL_Metrics.ALMetric"><code class="xref py py-class docutils literal notranslate"><span class="pre">ALMetric</span></code></a>. For example, a user may wish to overwrite
+<a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ALMetric.perf_message" title="bfbrain.AL_Metrics.ALMetric.perf_message"><code class="xref py py-meth docutils literal notranslate"><span class="pre">perf_message</span></code></a> in order to customize the message(s) which appear when printing the results of the metric to the output.txt file (as discussed in <a class="reference internal" href="#metrics"><span class="std std-ref">Performance Metrics</span></a>),
+or overwrite <a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ALMetric.get_metric" title="bfbrain.AL_Metrics.ALMetric.get_metric"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_metric</span></code></a> and <a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ALMetric.get_legend" title="bfbrain.AL_Metrics.ALMetric.get_legend"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_legend</span></code></a> in order to alter the plotting logic used in <a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ALMetric.plot_metric" title="bfbrain.AL_Metrics.ALMetric.plot_metric"><code class="xref py py-meth docutils literal notranslate"><span class="pre">plot_metric</span></code></a>.
+It is highly recommended to inspect the documentation of these methods, as well as examples in subclasses where they are overwritten, such as <a class="reference internal" href="bfbrain.html#bfbrain.AL_Metrics.ValidationFScore" title="bfbrain.AL_Metrics.ValidationFScore"><code class="xref py py-class docutils literal notranslate"><span class="pre">ValidationFScore</span></code></a>, before attempting
+to create metrics which record multicomponent data structures.</p>
+<p>Finally, implementing custom performance metrics comes with the same warning as implementing custom oracle functions: Because saving and loading of the <a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner" title="bfbrain.BFB_Learner.BFBLearner"><code class="xref py py-class docutils literal notranslate"><span class="pre">BFBLearner</span></code></a> class relies
+on the pickle module, any attempt to load a <a class="reference internal" href="bfbrain.html#bfbrain.BFB_Learner.BFBLearner" title="bfbrain.BFB_Learner.BFBLearner"><code class="xref py py-class docutils literal notranslate"><span class="pre">BFBLearner</span></code></a> with a custom performance metric must be done from a module with top-level access to the customized metric class,
+as well as all nonstandard attributes within the class.</p>
+<aside class="footnote-list brackets">
+<aside class="footnote brackets" id="id4" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">1</a><span class="fn-bracket">]</span></span>
+<p>Gal, Yarin, Jiri Hron, and Alex Kendall. “Concrete dropout.” Advances in neural information processing systems 30 (2017).</p>
+</aside>
+<aside class="footnote brackets" id="id5" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></span>
+<span class="backrefs">(<a role="doc-backlink" href="#id2">1</a>,<a role="doc-backlink" href="#id3">2</a>)</span>
+<p>Altschuler, Michael, and Michael Bloodgood. “Stopping active learning based on predicted change of f measure for text classification.” 2019 IEEE 13th International Conference on Semantic Computing (ICSC). IEEE, 2019.</p>
+</aside>
+</aside>
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">bfbrain</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="tutorial.html">Tutorial and User Guide</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="data_manager.html">Tutorial Step 1: Oracle and Data Generation</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Tutorial Step 2: Initializing the Classifier</a></li>
+<li class="toctree-l2"><a class="reference internal" href="training.html">Tutorial Step 3: Training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="analysis.html">Tutorial Step 4: Analysis</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">BFBrain</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="tutorial.html">Tutorial and User Guide</a><ul>
+      <li>Previous: <a href="data_manager.html" title="previous chapter">Tutorial Step 1: Oracle and Data Generation</a></li>
+      <li>Next: <a href="training.html" title="next chapter">Tutorial Step 3: Training</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, George Wojcik.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.2.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
+      
+      |
+      <a href="_sources/classifier.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

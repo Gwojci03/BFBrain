@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>bfbrain.Score_Functions &#8212; bfbrain 1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b3523f8e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=039e1c02" />
+    <script src="../../_static/documentation_options.js?v=f2a433a1"></script>
+    <script src="../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for bfbrain.Score_Functions</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;This module contains different methods to extract uncertainty estimates </span>
+<span class="sd">from a trained neural network. It also contains two useful analysis </span>
+<span class="sd">functions, MC_call_fast and MC_call_full, which execute Monte Carlo </span>
+<span class="sd">dropout with the neural networks that BFBrain produces.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<div class="viewcode-block" id="MC_call_full">
+<a class="viewcode-back" href="../../bfbrain.html#bfbrain.Score_Functions.MC_call_full">[docs]</a>
+<span class="nd">@tf</span><span class="o">.</span><span class="n">function</span><span class="p">(</span><span class="n">jit_compile</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">MC_call_full</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">lams</span><span class="p">,</span> <span class="n">n_trials</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Perform predictions on a given input using Monte Carlo dropout. </span>
+<span class="sd">    Evaluates the output of model on the input repeatedly, with random </span>
+<span class="sd">    dropout applied, and returns all results.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    model : tf.keras.Model</span>
+
+<span class="sd">    lams : tf.constant(tf.float32, tf.float32)</span>
+<span class="sd">        A 2-D Tensorflow tensor representing sets of quartic potential </span>
+<span class="sd">        coefficients.</span>
+
+<span class="sd">    n_trials : int</span>
+<span class="sd">        Specifies the number of forward passes through the neural network </span>
+<span class="sd">        to perform when doing Monte Carlo dropout.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tf.constant(tf.float32, tf.float32)</span>
+<span class="sd">        A 2-D Tensorflow tensor of scores for each set of quartic </span>
+<span class="sd">        potential coefficients in lams. Each entry along the zero axis </span>
+<span class="sd">        represents the results of a different forward pass of the </span>
+<span class="sd">        same inputs.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">out_array</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">TensorArray</span><span class="p">(</span><span class="n">dtype</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">size</span> <span class="o">=</span> <span class="n">n_trials</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">tf</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="n">n_trials</span><span class="p">):</span>
+        <span class="n">out_array</span> <span class="o">=</span> <span class="n">out_array</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">model</span><span class="p">(</span><span class="n">lams</span><span class="p">,</span> <span class="n">training</span> <span class="o">=</span> <span class="kc">True</span><span class="p">),</span> <span class="n">shape</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
+    <span class="n">out_array</span> <span class="o">=</span> <span class="n">out_array</span><span class="o">.</span><span class="n">stack</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">out_array</span></div>
+
+
+<div class="viewcode-block" id="MC_call_fast">
+<a class="viewcode-back" href="../../bfbrain.html#bfbrain.Score_Functions.MC_call_fast">[docs]</a>
+<span class="nd">@tf</span><span class="o">.</span><span class="n">function</span><span class="p">(</span><span class="n">jit_compile</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">MC_call_fast</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">lams</span><span class="p">,</span> <span class="n">n_trials</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;perform predictions on a given input using Monte Carlo dropout </span>
+<span class="sd">    when only the average output is required. Evaluates the output of </span>
+<span class="sd">    model on the input lams n_trials times and takes the average output </span>
+<span class="sd">    for each point. Schematically equivalent to </span>
+<span class="sd">    tf.reduce_mean(MC_call_full(model, lams, n_trials), axis = 0), </span>
+<span class="sd">    but faster.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    model : tf.keras.Model</span>
+
+<span class="sd">    lams : tf.constant(tf.float32, tf.float32)</span>
+<span class="sd">        A 2-D Tensorflow tensor representing sets of quartic potential </span>
+<span class="sd">        coefficients.</span>
+
+<span class="sd">    n_trials : int</span>
+<span class="sd">        Specifies the number of forward passes through the neural network </span>
+<span class="sd">        to perform when doing Monte Carlo dropout.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tf.constant(tf.float32) </span>
+<span class="sd">        A 1-D Tensorflow tensor of scores for each set of quartic </span>
+<span class="sd">        potential coefficients in lams.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">model</span><span class="p">(</span><span class="n">lams</span><span class="p">,</span> <span class="n">training</span> <span class="o">=</span> <span class="kc">True</span><span class="p">),</span> <span class="n">shape</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">/</span><span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="n">n_trials</span><span class="p">),</span> <span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">tf</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="n">n_trials</span><span class="p">)):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">result</span> <span class="o">+</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">model</span><span class="p">(</span><span class="n">lams</span><span class="p">,</span> <span class="n">training</span> <span class="o">=</span> <span class="kc">True</span><span class="p">),</span> <span class="n">shape</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">/</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="n">n_trials</span><span class="p">),</span> <span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">result</span></div>
+
+
+
+<div class="viewcode-block" id="QBDC">
+<a class="viewcode-back" href="../../bfbrain.html#bfbrain.Score_Functions.QBDC">[docs]</a>
+<span class="k">def</span> <span class="nf">QBDC</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">lams</span><span class="p">,</span> <span class="n">n_trials</span> <span class="o">=</span> <span class="mi">100</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Score an ensemble of possible additional training points by </span>
+<span class="sd">    &quot;query by dropout committee&quot;. Averages the result of many evaluations </span>
+<span class="sd">    with dropout enabled in the network and gives the highest scores to </span>
+<span class="sd">    points which are closest to the decision boundary. This should </span>
+<span class="sd">    estimate total predictive uncertainty, that is both aleatoric </span>
+<span class="sd">    (from ambiguity of the underlying input) and epistemic (from lack </span>
+<span class="sd">    of training data in the vicinity of the input) uncertainties.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    model : tf.keras.Model</span>
+
+<span class="sd">    lams : tf.constant(tf.float32, tf.float32)</span>
+<span class="sd">        A 2-D Tensorflow tensor representing sets of quartic potential </span>
+<span class="sd">        coefficients.</span>
+
+<span class="sd">    n_trials : int, default=100</span>
+<span class="sd">        Specifies the number of forward passes through the neural </span>
+<span class="sd">        network to perform when doing Monte Carlo dropout.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tf.constant(tf.float32) </span>
+<span class="sd">        A 1-D Tensorflow tensor of scores for each set of quartic </span>
+<span class="sd">        potential coefficients in lams.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">MC_call_fast</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">lams</span><span class="p">,</span> <span class="n">n_trials</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">result</span><span class="o">*</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mf">1.</span><span class="p">)</span><span class="o">-</span><span class="n">result</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Max_Entropy">
+<a class="viewcode-back" href="../../bfbrain.html#bfbrain.Score_Functions.Max_Entropy">[docs]</a>
+<span class="k">def</span> <span class="nf">Max_Entropy</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">lams</span><span class="p">,</span> <span class="n">n_trials</span> <span class="o">=</span> <span class="mi">100</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Score an ensemble of possible additional training points by </span>
+<span class="sd">    Shannon entropy. Averages the result of many evaluations with dropout </span>
+<span class="sd">    enabled in the network and gives the highest scores to points which </span>
+<span class="sd">    have the largest entropy. This should estimate total predictive </span>
+<span class="sd">    uncertainty, that is both aleatoric (from ambiguity of the underlying </span>
+<span class="sd">    input) and epistemic (from lack of training data in the vicinity of </span>
+<span class="sd">    the input) uncertainties.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    model : tf.keras.Model</span>
+
+<span class="sd">    lams : tf.constant(tf.float32, tf.float32)</span>
+<span class="sd">        A 2-D Tensorflow tensor representing sets of quartic potential </span>
+<span class="sd">        coefficients.</span>
+
+<span class="sd">    n_trials : int, default=100</span>
+<span class="sd">        Specifies the number of forward passes through the neural network </span>
+<span class="sd">        to perform when doing Monte Carlo dropout.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tf.constant(tf.float32) </span>
+<span class="sd">        A 1-D Tensorflow tensor of scores for each set of quartic </span>
+<span class="sd">        potential coefficients in lams.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">eps</span> <span class="o">=</span> <span class="mf">1e-7</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">MC_call_fast</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">lams</span><span class="p">,</span> <span class="n">n_trials</span><span class="p">)</span>
+    <span class="k">return</span> <span class="o">-</span><span class="n">result</span><span class="o">*</span><span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">result</span> <span class="o">+</span> <span class="n">eps</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="mf">1.</span> <span class="o">-</span> <span class="n">result</span><span class="p">)</span><span class="o">*</span><span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mf">1.</span><span class="o">-</span><span class="n">result</span> <span class="o">+</span> <span class="n">eps</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="BALD">
+<a class="viewcode-back" href="../../bfbrain.html#bfbrain.Score_Functions.BALD">[docs]</a>
+<span class="k">def</span> <span class="nf">BALD</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">lams</span><span class="p">,</span> <span class="n">n_trials</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Score an ensemble of possible additional training points by </span>
+<span class="sd">    mutual information (as is done in Bayesian Active Learning by </span>
+<span class="sd">    Disagreement, or BALD). This should estimate solely epistemic </span>
+<span class="sd">    (stemming from lack of training data in the vicinity of the input) </span>
+<span class="sd">    uncertainty.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    model : tf.keras.Model</span>
+
+<span class="sd">    lams : tf.constant(tf.float32, tf.float32)</span>
+<span class="sd">        A 2-D Tensorflow tensor representing sets of quartic potential </span>
+<span class="sd">        coefficients.</span>
+
+<span class="sd">    n_trials : int, default=1000</span>
+<span class="sd">        Specifies the number of forward passes through the neural </span>
+<span class="sd">        network to perform when doing Monte Carlo dropout.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tf.constant(tf.float32) </span>
+<span class="sd">        A 1-D Tensorflow tensor of scores for each set of quartic </span>
+<span class="sd">        potential coefficients in lams.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">eps</span> <span class="o">=</span> <span class="mf">1e-7</span>
+    <span class="n">out_array</span> <span class="o">=</span> <span class="n">MC_call_full</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">lams</span><span class="p">,</span> <span class="n">n_trials</span><span class="p">)</span>
+    <span class="n">mean_out</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">(</span><span class="n">out_array</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="k">return</span> <span class="o">-</span><span class="n">mean_out</span><span class="o">*</span><span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">mean_out</span><span class="o">+</span><span class="n">eps</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="mf">1.</span> <span class="o">-</span> <span class="n">mean_out</span><span class="p">)</span><span class="o">*</span><span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mf">1.</span><span class="o">-</span><span class="n">mean_out</span> <span class="o">+</span> <span class="n">eps</span><span class="p">)</span> <span class="o">+</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">(</span><span class="n">out_array</span><span class="o">*</span><span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">out_array</span> <span class="o">+</span> <span class="n">eps</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mf">1.</span><span class="o">-</span><span class="n">out_array</span><span class="p">)</span><span class="o">*</span><span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mf">1.</span><span class="o">-</span><span class="n">out_array</span> <span class="o">+</span> <span class="n">eps</span><span class="p">),</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Predictive_Variance">
+<a class="viewcode-back" href="../../bfbrain.html#bfbrain.Score_Functions.Predictive_Variance">[docs]</a>
+<span class="k">def</span> <span class="nf">Predictive_Variance</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">lams</span><span class="p">,</span> <span class="n">n_trials</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Score an ensemble of possible additional training points by </span>
+<span class="sd">    variance of the predicted score. This should estimate solely </span>
+<span class="sd">    epistemic (stemming from lack of training data in the vicinity </span>
+<span class="sd">    of the input) uncertainty.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    model : tf.keras.Model</span>
+
+<span class="sd">    lams : tf.constant(tf.float32, tf.float32)</span>
+<span class="sd">        A 2-D Tensorflow tensor representing sets of quartic potential </span>
+<span class="sd">        coefficients.</span>
+
+<span class="sd">    n_trials : int, default=1000</span>
+<span class="sd">        Specifies the number of forward passes through the neural </span>
+<span class="sd">        network to perform when doing Monte Carlo dropout.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tf.constant(tf.float32) </span>
+<span class="sd">        A 1-D Tensorflow tensor of scores for each set of quartic </span>
+<span class="sd">        potential coefficients in lams.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">out_array</span> <span class="o">=</span> <span class="n">MC_call_full</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">lams</span><span class="p">,</span> <span class="n">n_trials</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">reduce_std</span><span class="p">(</span><span class="n">out_array</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Variation_Ratios">
+<a class="viewcode-back" href="../../bfbrain.html#bfbrain.Score_Functions.Variation_Ratios">[docs]</a>
+<span class="k">def</span> <span class="nf">Variation_Ratios</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">lams</span><span class="p">,</span> <span class="n">n_trials</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Score an ensemble of possible additional training points by </span>
+<span class="sd">    variation ratios (the fraction of evaluations which give the opposite </span>
+<span class="sd">    classification to the mode). This should be sensitive to total </span>
+<span class="sd">    predictive uncertainty, that is both aleatoric (from ambiguity</span>
+<span class="sd">    of the underlying input) and epistemic (from lack of training data </span>
+<span class="sd">    in the vicinity of the input) uncertainties</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    model : tf.keras.Model</span>
+
+<span class="sd">    lams : tf.constant(tf.float32, tf.float32)</span>
+<span class="sd">        A 2-D Tensorflow tensor representing sets of quartic potential </span>
+<span class="sd">        coefficients.</span>
+
+<span class="sd">    n_trials : int, default=1000</span>
+<span class="sd">        Specifies the number of forward passes through the neural </span>
+<span class="sd">        network to perform when doing Monte Carlo dropout.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tf.constant(tf.float32) </span>
+<span class="sd">        A 1-D Tensorflow tensor of scores for each set of quartic </span>
+<span class="sd">        potential coefficients in lams.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">out_array</span> <span class="o">=</span> <span class="n">MC_call_full</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">lams</span><span class="p">,</span> <span class="n">n_trials</span><span class="p">)</span>
+    <span class="n">out_sum</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">out_array</span> <span class="o">&gt;</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">),</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="n">n_trials</span>
+
+    <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="n">out_sum</span><span class="p">,</span> <span class="mf">1.</span> <span class="o">-</span> <span class="n">out_sum</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Random_AL">
+<a class="viewcode-back" href="../../bfbrain.html#bfbrain.Score_Functions.Random_AL">[docs]</a>
+<span class="k">def</span> <span class="nf">Random_AL</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">lams</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Score an ensemble of possible additional training points randomly.</span>
+<span class="sd">    This can act as a control to confirm that active learning strategies</span>
+<span class="sd">    outperform a randomly generated ensemble of training points.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    model : tf.keras.Model</span>
+
+<span class="sd">    lams : tf.constant(tf.float32, tf.float32)</span>
+<span class="sd">        A 2-D Tensorflow tensor representing sets of quartic potential </span>
+<span class="sd">        coefficients.</span>
+<span class="sd">        </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tf.constant(tf.float32) </span>
+<span class="sd">        A 1-D Tensorflow tensor of scores for each set of quartic potential </span>
+<span class="sd">        coefficients in lams.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">lams</span><span class="p">)[</span><span class="mi">0</span><span class="p">],))</span></div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">bfbrain</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorial.html">Tutorial and User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">BFBrain</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, George Wojcik.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.2.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

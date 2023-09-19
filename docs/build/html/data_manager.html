@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Tutorial Step 1: Oracle and Data Generation &#8212; bfbrain 1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b3523f8e" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=039e1c02" />
+    <script src="_static/documentation_options.js?v=f2a433a1"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Tutorial Step 2: Initializing the Classifier" href="classifier.html" />
+    <link rel="prev" title="Tutorial and User Guide" href="tutorial.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="tutorial-step-1-oracle-and-data-generation">
+<span id="oracle"></span><h1>Tutorial Step 1: Oracle and Data Generation<a class="headerlink" href="#tutorial-step-1-oracle-and-data-generation" title="Link to this heading">¶</a></h1>
+<section id="writing-the-potential-function">
+<span id="sympypotentials"></span><h2>Writing the Potential Function<a class="headerlink" href="#writing-the-potential-function" title="Link to this heading">¶</a></h2>
+<p>The first step to any BFBrain analysis is writing down the scalar potential which
+the user wishes to analyze. In <a class="reference internal" href="usage.html#quickstart"><span class="std std-ref">Quickstart</span></a>, this method was written as</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">sympy</span> <span class="k">as</span> <span class="nn">sym</span>
+<span class="kn">from</span> <span class="nn">sympy</span> <span class="kn">import</span> <span class="n">I</span>
+<span class="kn">from</span> <span class="nn">sympy.physics.quantum.dagger</span> <span class="kn">import</span> <span class="n">Dagger</span>
+
+<span class="c1"># Write a SymPy function representing the scalar potential.</span>
+<span class="k">def</span> <span class="nf">V_2HDM</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span> <span class="n">lam</span><span class="p">):</span>
+    <span class="n">Phi1</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="n">phi</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span>
+    <span class="n">Phi2</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([</span><span class="n">phi</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">I</span><span class="o">*</span><span class="n">phi</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">phi</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="n">I</span><span class="o">*</span><span class="n">phi</span><span class="p">[</span><span class="mi">4</span><span class="p">]])</span>
+    <span class="n">phi1sq</span> <span class="o">=</span> <span class="n">Dagger</span><span class="p">(</span><span class="n">Phi1</span><span class="p">)</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">Phi1</span><span class="p">)</span>
+    <span class="n">phi2sq</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">simplify</span><span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">Phi2</span><span class="p">)</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">Phi2</span><span class="p">))</span>
+    <span class="n">phi12</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">simplify</span><span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">Phi1</span><span class="p">)</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">Phi2</span><span class="p">))</span>
+    <span class="n">phi21</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">simplify</span><span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">Phi2</span><span class="p">)</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">Phi1</span><span class="p">))</span>
+
+    <span class="n">QVec</span> <span class="o">=</span> <span class="p">(</span><span class="n">sym</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([(</span><span class="n">phi1sq</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="n">phi2sq</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span>
+                 <span class="n">phi1sq</span><span class="o">*</span><span class="n">phi2sq</span><span class="p">,</span> <span class="n">phi12</span><span class="o">*</span><span class="n">phi21</span><span class="p">,</span>
+                 <span class="p">(</span><span class="n">phi12</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">phi21</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span>
+                 <span class="n">I</span><span class="o">*</span><span class="p">(</span><span class="n">phi12</span><span class="o">**</span><span class="mi">2</span> <span class="o">-</span> <span class="n">phi21</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span>
+                 <span class="n">phi1sq</span><span class="o">*</span><span class="p">(</span><span class="n">phi12</span> <span class="o">+</span> <span class="n">phi21</span><span class="p">),</span>
+                 <span class="n">I</span><span class="o">*</span><span class="n">phi1sq</span><span class="o">*</span><span class="p">(</span><span class="n">phi12</span> <span class="o">-</span> <span class="n">phi21</span><span class="p">),</span>
+                 <span class="n">phi2sq</span><span class="o">*</span><span class="p">(</span><span class="n">phi12</span> <span class="o">+</span> <span class="n">phi21</span><span class="p">),</span>
+                 <span class="n">I</span><span class="o">*</span><span class="n">phi2sq</span><span class="o">*</span><span class="p">(</span><span class="n">phi12</span><span class="o">-</span><span class="n">phi21</span><span class="p">)]))</span><span class="o">.</span><span class="n">applyfunc</span><span class="p">(</span><span class="n">sym</span><span class="o">.</span><span class="n">simplify</span><span class="p">)</span>
+<span class="k">return</span> <span class="n">QVec</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">lam</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This example exhibits some key requirements for the oracle. First, it must have the same signature
+as our example function– it will take two sympy.Array() symbols– the first (in this case phi) representing
+the independent real parameters that specify a unique vev in the model. The second (in this case lam)
+representing the set of independent real quartic coupling coefficients that uniquely specify a scalar potential.</p>
+<p>The user-specified potential function will then output a SymPy expression which BFBrain will process into a numerical function for analysis.
+For more examples of scalar potentials implemented in BFBrain-compatible manner, we refer the reader to <a class="reference internal" href="bfbrain.html#module-bfbrain.Potential_Functions" title="bfbrain.Potential_Functions"><code class="xref py py-mod docutils literal notranslate"><span class="pre">the</span> <span class="pre">Potential_Functions</span> <span class="pre">module</span></code></a></p>
+<section id="potential-pitfalls">
+<h3>Potential Pitfalls<a class="headerlink" href="#potential-pitfalls" title="Link to this heading">¶</a></h3>
+<p>There are several important characteristics to keep in mind when specifying the SymPy potential function:</p>
+<p>All components of phi and lam must be real. BFBrain assumes they are real when producing a numeric function. As shown in our example, arbitrary complex quartic coupling coefficients can be
+split into real and imaginary components and parameterized by lists of real numbers to satisfy this requirement.</p>
+<p>Terms below fourth order in the vev’s should not be included in the potential– these have no bearing on strict boundedness-from below.</p>
+<p>The potential must be linear in the quartic coefficients– so in our example, V_2HDM(phi, lam1 + lam2) == V_2HDM(phi, lam1) + V_2HDM(phi, lam2),
+or the resulting bounded-from-below parameter space will not be convex, which BFBrain depends on.</p>
+<p>The potential must be written as a quartic real polynomial in the vev components– there can be no decomposition of the scalar vev into, for example,
+an angular parameterization.</p>
+<p>In the final SymPy expression, any matrix operations such as traces or dot products must be
+explicitly evaluated– this is usually accomplished with sympy.simplify and/or sympy.expand
+on individual quartic terms in the potential. Otherwise BFBrain’s attempt to convert the expression
+into a numerical function will throw an exception. In practice this can be readily checked by
+direct inspection of the output of the potential function. In our example, we can write</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">phisym</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">Array</span><span class="p">(</span><span class="n">sym</span><span class="o">.</span><span class="n">symbols</span><span class="p">(</span><span class="s1">&#39;phi:5&#39;</span><span class="p">,</span> <span class="n">real</span> <span class="o">=</span> <span class="kc">True</span><span class="p">))</span>
+<span class="n">lamsym</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">Array</span><span class="p">(</span><span class="n">sym</span><span class="o">.</span><span class="n">symbols</span><span class="p">(</span><span class="s1">&#39;lambda:10&#39;</span><span class="p">,</span> <span class="n">real</span> <span class="o">=</span> <span class="kc">True</span><span class="p">))</span>
+<span class="n">V_2HDM</span><span class="p">(</span><span class="n">phisym</span><span class="p">,</span> <span class="n">lamsym</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>which gives the expression</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}&amp;\frac{\lambda_0}{2} + \frac{\lambda_1}{2} \bigg( \sum_{i = 1}^4 \phi_i^2 \bigg)^2 + \lambda_2 \phi_0^2 \bigg( \sum_{i = 1}^4 \phi_i^2 \bigg) + \lambda_3 \phi_0^2 (\phi_2^2 + \phi_4^2) + \lambda_4 \phi_0^2 (\phi_2^2 - \phi_4^2)\\
+&amp;- 2 \lambda_5 \phi_0^2 \phi_2 \phi_4 + 2 \lambda_6 \phi_0^3 \phi_2 - 2 \lambda_7 \phi_0^3 \phi_4 + 2 \lambda_8 \phi_0 \phi_2 \bigg( \sum_{i = 1}^4 \phi_i^2 \bigg) - 2 \lambda_9 \phi_0 \phi_4 \bigg( \sum_{i = 1}^4 \phi_i^2 \bigg), \nonumber\end{split}\]</div>
+<p>which we can see avoids any implicit matrix computations.</p>
+</section>
+</section>
+<section id="datamanager">
+<span id="id1"></span><h2>DataManager<a class="headerlink" href="#datamanager" title="Link to this heading">¶</a></h2>
+<p>Once a SymPy expression for the potential is written, the next step of the analysis is
+converting the SymPy expression into a form which BFBrain can use to create an oracle
+function to label training and test examples. This is done by instantiating the
+<a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager" title="bfbrain.Data_Manager.DataManager"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataManager</span></code></a> class. It is <strong>highly</strong> recommended
+to instantiate this class using <a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager.from_func" title="bfbrain.Data_Manager.DataManager.from_func"><code class="xref py py-meth docutils literal notranslate"><span class="pre">from_func</span></code></a>.</p>
+<p>For a full documentation of all of the relevant methods of the DataManager, we refer the reader
+to the documentation. In summary, the <a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager" title="bfbrain.Data_Manager.DataManager"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataManager</span></code></a> class:</p>
+<ul class="simple">
+<li><p>Generates new random samples in the space of quartic coefficients by uniformly sampling from the surface of the unit hypersphere in this space (since boundedness-from-below of a potential is invariant under positive rescaling of the quartic potential coefficients, the unit hypersphere represents all possible sets of quartic coupling coefficients we would need to label).</p></li>
+<li><p>Applies a (generally computationally expensive) oracle function which labels samples as bounded-from-below  or not for training or testing. Produces an easily stored and manipulable <a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.np_data" title="bfbrain.Data_Manager.np_data"><code class="xref py py-class docutils literal notranslate"><span class="pre">np_data</span></code></a> object to contain labelled data.</p></li>
+<li><p>Converts <a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.np_data" title="bfbrain.Data_Manager.np_data"><code class="xref py py-class docutils literal notranslate"><span class="pre">np_data</span></code></a> objects into Tensorflow datasets for rapid training and prediction.</p></li>
+</ul>
+<p>The DataManager class is where a user specifies an oracle function (which labels training examples).
+BFBrain has a <a class="reference internal" href="#defaultoracle"><span class="std std-ref">default oracle function</span></a> specified, but retains support for
+<a class="reference internal" href="#customoracle"><span class="std std-ref">user-defined oracle functions</span></a>.</p>
+<section id="using-the-default-oracle">
+<span id="defaultoracle"></span><h3>Using the Default Oracle<a class="headerlink" href="#using-the-default-oracle" title="Link to this heading">¶</a></h3>
+<p>The simplest (and almost always recommended) choice for an oracle when implementing the DataManager class is to
+use the default oracle included in BFBrain, <a class="reference internal" href="bfbrain.html#bfbrain.Jax_Oracle.label_func" title="bfbrain.Jax_Oracle.label_func"><code class="xref py py-meth docutils literal notranslate"><span class="pre">label_func</span></code></a>, as was done in
+in <a class="reference internal" href="usage.html#quickstart"><span class="std std-ref">Quickstart</span></a>. <a class="reference internal" href="bfbrain.html#bfbrain.Jax_Oracle.label_func" title="bfbrain.Jax_Oracle.label_func"><code class="xref py py-meth docutils literal notranslate"><span class="pre">label_func</span></code></a> estimates if a particular
+set of quartic potential coefficients is bounded-from-below by locally minimizing the quartic part of the
+scalar potential with respect to the vev a large number of times at random starting vev configurations.
+By increasing the number of local minimizations, the algorithm becomes arbitrarily accurate.</p>
+<p>The number of local minimizations that <a class="reference internal" href="bfbrain.html#bfbrain.Jax_Oracle.label_func" title="bfbrain.Jax_Oracle.label_func"><code class="xref py py-meth docutils literal notranslate"><span class="pre">label_func</span></code></a> performs is controlled
+by the keyword argument, niter. This keyword argument (along with all other keyword arguments accepted by
+<a class="reference internal" href="bfbrain.html#bfbrain.Jax_Oracle.label_func" title="bfbrain.Jax_Oracle.label_func"><code class="xref py py-meth docutils literal notranslate"><span class="pre">label_func</span></code></a>) can be specified in the <a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager" title="bfbrain.Data_Manager.DataManager"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataManager</span></code></a>
+constructor <a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager.from_func" title="bfbrain.Data_Manager.DataManager.from_func"><code class="xref py py-meth docutils literal notranslate"><span class="pre">from_func</span></code></a> and will be passed to the oracle from there.
+As an example, if we want the oracle to perform 100 local minimizations, then the appropriate DataManager constructor for the
+2HDM potential we specified in <a class="reference internal" href="#sympypotentials"><span class="std std-ref">Writing the Potential Function</span></a>, which has 5 real parameters in its
+vev configuration and 10 real quartic potential coefficients, will be</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bfbrain</span> <span class="kn">import</span> <span class="n">DataManager</span>
+
+<span class="n">dm</span> <span class="o">=</span> <span class="n">DataManager</span><span class="o">.</span><span class="n">from_func</span><span class="p">(</span><span class="n">V_2HDM</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">niter</span> <span class="o">=</span> <span class="mi">100</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>BFBrain also has a pre-implemented method for testing the performance of different numbers of local minimizations in order
+to identify an oracle with a minimal amount of noise (that is, incorrect labels) for use in training. In our studies
+in <a class="footnote-reference brackets" href="#id4" id="id2" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a>, we have found that once the oracle achieves highly robust labels (that is, it will label the same
+inputs identically every time), the effect of label noise on the performance of a BFBrain classifier is generally
+quite small. <a class="reference internal" href="bfbrain.html#bfbrain.Jax_Oracle.test_labeller" title="bfbrain.Jax_Oracle.test_labeller"><code class="xref py py-meth docutils literal notranslate"><span class="pre">test_labeller</span></code></a> determines robustness by repeatedly labelling the same (large)
+sample of quartic potential coefficients, while increasing the number of local minimizations that the oracle performs by
+a fixed interval with every labelling attempt. Once the method has found that identical labels are returned for a
+user-specified number of consecutive labelling attempts, it returns the number of local minimizations that it used
+for the first attempt in this streak. In other words, the test estimates the minimum number of local minimizations such that
+increasing the number of local minimizations does not change the labels on a large sample set. The robustness test is easily performed
+from the <a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager" title="bfbrain.Data_Manager.DataManager"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataManager</span></code></a> object using <a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager.check_labeller" title="bfbrain.Data_Manager.DataManager.check_labeller"><code class="xref py py-meth docutils literal notranslate"><span class="pre">check_labeller</span></code></a>. For example, to perform a test
+on 100000 sets of quartic coupling coefficients sampled uniformly from the surface of the unit hypersphere, where the number of local
+minimizations is increased by 50 with each labelling attempt, and robustness is defined as 5 consecutive consistent labelling attempts,
+we need only write</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">min_niter</span> <span class="o">=</span> <span class="n">dm</span><span class="o">.</span><span class="n">check_labeller</span><span class="p">(</span><span class="mi">100000</span><span class="p">,</span> <span class="n">niter_step</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span> <span class="n">count_success</span> <span class="o">=</span> <span class="mi">5</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We direct the reader to the function’s documentation for more information on usage and customization of <a class="reference internal" href="bfbrain.html#bfbrain.Jax_Oracle.test_labeller" title="bfbrain.Jax_Oracle.test_labeller"><code class="xref py py-meth docutils literal notranslate"><span class="pre">test_labeller</span></code></a>.</p>
+</section>
+<section id="advanced-usage-customized-oracles">
+<span id="customoracle"></span><h3>Advanced Usage: Customized Oracles<a class="headerlink" href="#advanced-usage-customized-oracles" title="Link to this heading">¶</a></h3>
+<p>BFBrain also supports customized oracles. The creation and use of a customized oracle is considerably more involved than usage of
+<a class="reference internal" href="#defaultoracle"><span class="std std-ref">the default oracle</span></a>, and is only recommended in highly specialized use cases, especially since the default
+oracle noise has exhibited a limited impact on the BFBrain classifier performance when labels are sufficiently robust for the various
+complicated scalar potentials discussed in <a class="footnote-reference brackets" href="#id4" id="id3" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a>. If the user wishes to rely on the default oracle, there is no need for them to read this
+section.</p>
+<p>A custom oracle must process a numerical function produced by the <a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager" title="bfbrain.Data_Manager.DataManager"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataManager</span></code></a> object
+from the SymPy expression for the scalar potential. This numerical function may be a NumPy, SciPy, Jax, or Tensorflow function.
+To specify which of these functions the oracle should be passed, one must specify the keyword lambdify_mode in <a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager.from_func" title="bfbrain.Data_Manager.DataManager.from_func"><code class="xref py py-meth docutils literal notranslate"><span class="pre">the</span> <span class="pre">DataManager</span> <span class="pre">constructor</span></code></a>
+as ‘numpy’, ‘scipy’, ‘jax’, or ‘tensorflow’.</p>
+<p>Regardless of its format, the numerical function will return a tuple consisting of the function value and its gradient with respect
+to the scalar vev. A customized oracle must then be a function with the signature,</p>
+<p>(func : callable, phi_len : int, polar : bool, rng : numpy.random.Generator, lam : np.array(np.float32, np.float32), **kwargs) <span class="math notranslate nohighlight">\(\rightarrow\)</span> np.array(bool)</p>
+<p>The input parameters (except for **kwargs) are identical to their equivalents in <a class="reference internal" href="bfbrain.html#bfbrain.Jax_Oracle.label_func" title="bfbrain.Jax_Oracle.label_func"><code class="xref py py-meth docutils literal notranslate"><span class="pre">the</span> <span class="pre">default</span> <span class="pre">oracle's</span> <span class="pre">label_func</span> <span class="pre">method</span></code></a>, with the possible exception that
+func may be a NumPy, SciPy, or Tensorflow function rather than a Jax Numpy function. As a simple (if unrealistic) example of implementing a customized oracle, we consider an alternate oracle which takes
+a NumPy function for the numerical potential function, and labels a point as bounded-from-below if it is bounded-from-below assuming that only one of the two Higgs fields attains a nonzero vev at one time.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">label_fn</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">phi_len</span><span class="p">,</span> <span class="n">polar</span><span class="p">,</span> <span class="n">rng</span><span class="p">,</span> <span class="n">lam</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="c1"># Assuming our numerical function will come from the V_2HDM function we specified earlier,</span>
+    <span class="c1"># we specify inputs which correspond to only one of the two Higgs fields having a nonzero vev.</span>
+    <span class="n">input1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.</span><span class="p">,</span><span class="mf">0.</span><span class="p">,</span><span class="mf">0.</span><span class="p">,</span><span class="mf">0.</span><span class="p">,</span><span class="mf">0.</span><span class="p">])</span>
+    <span class="n">input2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">func</span><span class="p">(</span><span class="n">input1</span><span class="p">,</span> <span class="n">x</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">func</span><span class="p">(</span><span class="n">input2</span><span class="p">,</span> <span class="n">x</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">lam</span><span class="p">])</span>
+
+<span class="n">dm</span> <span class="o">=</span> <span class="n">DataManager</span><span class="o">.</span><span class="n">from_func</span><span class="p">(</span><span class="n">V_2HDM</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">lambdify_mode</span> <span class="o">=</span> <span class="s1">&#39;numpy&#39;</span><span class="p">,</span> <span class="n">label_fn</span> <span class="o">=</span> <span class="n">label_fn</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>At this point, label_fn will be used as the oracle function instead of the default oracle– in the case of our example leading to significantly less accurate results!
+We can also customize the function called by <a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager.check_labeller" title="bfbrain.Data_Manager.DataManager.check_labeller"><code class="xref py py-meth docutils literal notranslate"><span class="pre">DataManager.check_labeller</span></code></a> in the same manner, this time by writing a new function to replace <a class="reference internal" href="bfbrain.html#bfbrain.Jax_Oracle.test_labeller" title="bfbrain.Jax_Oracle.test_labeller"><code class="xref py py-meth docutils literal notranslate"><span class="pre">test_labeller</span></code></a>.
+Obviously the custom oracle we have implemented here has no hyperparameters to check. However, we should see that it will label approximately 25% of all
+uniformly sampled inputs as bounded-from-below, since it labels every point where the two coefficients <span class="math notranslate nohighlight">\(\lambda_0\)</span> and <span class="math notranslate nohighlight">\(\lambda_1\)</span> are both positive as bounded-from-below.
+So, we can adapt our DataManager’s test to check classification labels for a uniformly sampled set of points. An example implementation of this is given below:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">label_fn</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">phi_len</span><span class="p">,</span> <span class="n">polar</span><span class="p">,</span> <span class="n">rng</span><span class="p">,</span> <span class="n">lam</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="c1"># Assuming our numerical function will come from the V_2HDM function we specified earlier,</span>
+    <span class="c1"># we specify inputs which correspond to only one of the two Higgs fields having a nonzero vev.</span>
+    <span class="n">input1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.</span><span class="p">,</span><span class="mf">0.</span><span class="p">,</span><span class="mf">0.</span><span class="p">,</span><span class="mf">0.</span><span class="p">,</span><span class="mf">0.</span><span class="p">])</span>
+    <span class="n">input2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">func</span><span class="p">(</span><span class="n">input1</span><span class="p">,</span> <span class="n">x</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">func</span><span class="p">(</span><span class="n">input2</span><span class="p">,</span> <span class="n">x</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">lam</span><span class="p">])</span>
+
+<span class="c1">#Now we also specify a new function label_check, which will replace the default method called by DataManager.check_labeller</span>
+<span class="k">def</span> <span class="nf">label_check</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">phi_len</span><span class="p">,</span> <span class="n">polar</span><span class="p">,</span> <span class="n">rng</span><span class="p">,</span> <span class="n">lam</span><span class="p">,</span> <span class="n">label_kwargs</span> <span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="c1">#Notice that label_check must take the same arguments as label_fn, but can return any type and may take additional keyword arguments.</span>
+    <span class="n">n_inputs</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">lam</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">label_fn</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">phi_len</span><span class="p">,</span> <span class="n">polar</span><span class="p">,</span> <span class="n">rng</span><span class="p">,</span> <span class="n">lam</span><span class="p">,</span> <span class="o">**</span><span class="n">label_kwargs</span><span class="p">))</span> <span class="o">/</span> <span class="n">n_inputs</span>
+
+<span class="n">dm</span> <span class="o">=</span> <span class="n">DataManager</span><span class="o">.</span><span class="n">from_func</span><span class="p">(</span><span class="n">V_2HDM</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">lambdify_mode</span> <span class="o">=</span> <span class="s1">&#39;numpy&#39;</span><span class="p">,</span> <span class="n">label_fn</span> <span class="o">=</span> <span class="n">label_fn</span><span class="p">,</span> <span class="n">label_check</span> <span class="o">=</span> <span class="n">label_check</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Now, for example, when dm.check_labeller(100000) is called, the method we have defined above will be called on a set of 100000 uniformly sampled sets of quartic coefficients, instead of
+<a class="reference internal" href="bfbrain.html#bfbrain.Jax_Oracle.test_labeller" title="bfbrain.Jax_Oracle.test_labeller"><code class="xref py py-meth docutils literal notranslate"><span class="pre">test_labeller</span></code></a>.</p>
+<p>A potential pitfall when implementing customized oracles and oracle tests can arise when saving and loading the resulting <a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager" title="bfbrain.Data_Manager.DataManager"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataManager</span></code></a>, which can occur
+often during training. Because the <a class="reference internal" href="bfbrain.html#bfbrain.Data_Manager.DataManager" title="bfbrain.Data_Manager.DataManager"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataManager</span></code></a> object is saved using pickle, in order to load an instance of the class which has a custom oracle or
+oracle test function must have the SAME custom function be accessible from the top level of the module– otherwise the program will throw an exception.</p>
+<aside class="footnote-list brackets">
+<aside class="footnote brackets" id="id4" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></span>
+<span class="backrefs">(<a role="doc-backlink" href="#id2">1</a>,<a role="doc-backlink" href="#id3">2</a>)</span>
+<p>Wojcik, George. In Preparation [arXiv:2309.XXXXX]</p>
+</aside>
+</aside>
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">bfbrain</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="tutorial.html">Tutorial and User Guide</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Tutorial Step 1: Oracle and Data Generation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="classifier.html">Tutorial Step 2: Initializing the Classifier</a></li>
+<li class="toctree-l2"><a class="reference internal" href="training.html">Tutorial Step 3: Training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="analysis.html">Tutorial Step 4: Analysis</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">BFBrain</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="tutorial.html">Tutorial and User Guide</a><ul>
+      <li>Previous: <a href="tutorial.html" title="previous chapter">Tutorial and User Guide</a></li>
+      <li>Next: <a href="classifier.html" title="next chapter">Tutorial Step 2: Initializing the Classifier</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, George Wojcik.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.2.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
+      
+      |
+      <a href="_sources/data_manager.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

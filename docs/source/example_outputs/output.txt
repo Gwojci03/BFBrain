@@ -1,0 +1,211 @@
+Model: "sequential"
+_________________________________________________________________
+ Layer (type)                Output Shape              Param #   
+=================================================================
+ hypersphere_projection_lay  (None, 10)                0         
+ er (HypersphereProjectionL                                      
+ ayer)                                                           
+                                                                 
+ dense (Dense)               (None, 128)               1280      
+                                                                 
+ concrete_dense_dropout (Co  (None, 128)               16385     
+ ncreteDenseDropout)                                             
+                                                                 
+ concrete_dense_dropout_1 (  (None, 128)               16385     
+ ConcreteDenseDropout)                                           
+                                                                 
+ concrete_dense_dropout_2 (  (None, 128)               16385     
+ ConcreteDenseDropout)                                           
+                                                                 
+ concrete_dense_dropout_3 (  (None, 128)               16385     
+ ConcreteDenseDropout)                                           
+                                                                 
+ concrete_dense_dropout_4 (  (None, 1)                 129       
+ ConcreteDenseDropout)                                           
+                                                                 
+=================================================================
+Total params: 66949 (261.52 KB)
+Trainable params: 66949 (261.52 KB)
+Non-trainable params: 0 (0.00 Byte)
+_________________________________________________________________
+{'learning_rate': 0.001, 'hop_dist': 0.8047567571167001, 'rand_fraction': 0.0, 'idx': 0, 'l_constant': 0.1}
+Metrics for round 1:
+val_BALD_fscore (validation precision) [0.95, 1.0]:
+[0.841897233201581, 0.8277153558052435]
+val_BALD_fscore (validation recall) [0.95, 1.0]:
+[0.9953271028037384, 0.5022727272727273]
+val_BALD_fscore (validation F score) [0.95, 1.0]:
+[0.9122055674518201, 0.6251768033946251]
+model_delta_F:
+0.7827363476218439
+Metrics for round 2:
+val_BALD_fscore (validation precision) [0.95, 1.0]:
+[0.7962184873949579, 0.7644710578842315]
+val_BALD_fscore (validation recall) [0.95, 1.0]:
+[1.0, 0.8704545454545455]
+val_BALD_fscore (validation F score) [0.95, 1.0]:
+[0.8865497076023392, 0.8140276301806588]
+model_delta_F:
+0.48253557567917205
+Metrics for round 3:
+val_BALD_fscore (validation precision) [0.95, 1.0]:
+[0.9862637362637363, 0.9661458333333334]
+val_BALD_fscore (validation recall) [0.95, 1.0]:
+[1.0, 0.8431818181818181]
+val_BALD_fscore (validation F score) [0.95, 1.0]:
+[0.9930843706777317, 0.9004854368932038]
+model_delta_F:
+0.2390288384817052
+Metrics for round 4:
+val_BALD_fscore (validation precision) [0.95, 1.0]:
+[0.9713541666666666, 0.9506172839506173]
+val_BALD_fscore (validation recall) [0.95, 1.0]:
+[1.0, 0.875]
+val_BALD_fscore (validation F score) [0.95, 1.0]:
+[0.9854689564068693, 0.9112426035502958]
+model_delta_F:
+0.09549454879810848
+Metrics for round 5:
+val_BALD_fscore (validation precision) [0.95, 1.0]:
+[0.9923273657289002, 0.9830097087378641]
+val_BALD_fscore (validation recall) [0.95, 1.0]:
+[1.0, 0.9204545454545454]
+val_BALD_fscore (validation F score) [0.95, 1.0]:
+[0.9961489088575096, 0.9507042253521127]
+model_delta_F:
+0.07464574898785425
+Metrics for round 6:
+val_BALD_fscore (validation precision) [0.95, 1.0]:
+[0.9874371859296482, 0.9737470167064439]
+val_BALD_fscore (validation recall) [0.95, 1.0]:
+[1.0, 0.9272727272727272]
+val_BALD_fscore (validation F score) [0.95, 1.0]:
+[0.9936788874841972, 0.949941792782305]
+model_delta_F:
+0.05851462865716428
+Metrics for round 7:
+val_BALD_fscore (validation precision) [0.95, 1.0]:
+[0.9924812030075187, 0.9809523809523809]
+val_BALD_fscore (validation recall) [0.95, 1.0]:
+[1.0, 0.9363636363636364]
+val_BALD_fscore (validation F score) [0.95, 1.0]:
+[0.9962264150943396, 0.958139534883721]
+model_delta_F:
+0.04976362279173929
+Metrics for round 8:
+val_BALD_fscore (validation precision) [0.95, 1.0]:
+[0.9925558312655087, 0.9835294117647059]
+val_BALD_fscore (validation recall) [0.95, 1.0]:
+[1.0, 0.95]
+val_BALD_fscore (validation F score) [0.95, 1.0]:
+[0.9962640099626401, 0.9664739884393062]
+model_delta_F:
+0.04547134935304986
+Metrics for round 9:
+val_BALD_fscore (validation precision) [0.95, 1.0]:
+[0.9950124688279302, 0.9881796690307328]
+val_BALD_fscore (validation recall) [0.95, 1.0]:
+[1.0, 0.95]
+val_BALD_fscore (validation F score) [0.95, 1.0]:
+[0.9974999999999999, 0.9687137891077635]
+model_delta_F:
+0.04288883411387723
+Metrics for round 10:
+val_BALD_fscore (validation precision) [0.95, 1.0]:
+[0.9975124378109452, 0.9929245283018868]
+val_BALD_fscore (validation recall) [0.95, 1.0]:
+[1.0, 0.9568181818181818]
+val_BALD_fscore (validation F score) [0.95, 1.0]:
+[0.9987546699875467, 0.9745370370370371]
+model_delta_F:
+0.03853256186138121
+Metrics for round 11:
+val_BALD_fscore (validation precision) [0.95, 1.0]:
+[0.9975728155339806, 0.988479262672811]
+val_BALD_fscore (validation recall) [0.95, 1.0]:
+[1.0, 0.975]
+val_BALD_fscore (validation F score) [0.95, 1.0]:
+[0.9987849331713243, 0.9816933638443935]
+model_delta_F:
+0.037513657885152374
+Metrics for round 12:
+val_BALD_fscore (validation precision) [0.95, 1.0]:
+[0.9927184466019418, 0.9792626728110599]
+val_BALD_fscore (validation recall) [0.95, 1.0]:
+[1.0, 0.9659090909090909]
+val_BALD_fscore (validation F score) [0.95, 1.0]:
+[0.9963459196102314, 0.9725400457665904]
+model_delta_F:
+0.03763766186615036
+Metrics for round 13:
+val_BALD_fscore (validation precision) [0.95, 1.0]:
+[1.0, 0.9858823529411764]
+val_BALD_fscore (validation recall) [0.95, 1.0]:
+[1.0, 0.9522727272727273]
+val_BALD_fscore (validation F score) [0.95, 1.0]:
+[1.0, 0.9687861271676301]
+model_delta_F:
+0.037879704707733275
+Metrics for round 14:
+val_BALD_fscore (validation precision) [0.95, 1.0]:
+[1.0, 0.9858823529411764]
+val_BALD_fscore (validation recall) [0.95, 1.0]:
+[1.0, 0.9522727272727273]
+val_BALD_fscore (validation F score) [0.95, 1.0]:
+[1.0, 0.9687861271676301]
+model_delta_F:
+0.03389009924957642
+Metrics for round 15:
+val_BALD_fscore (validation precision) [0.95, 1.0]:
+[0.9950248756218906, 0.9882075471698113]
+val_BALD_fscore (validation recall) [0.95, 1.0]:
+[1.0, 0.9522727272727273]
+val_BALD_fscore (validation F score) [0.95, 1.0]:
+[0.9975062344139651, 0.9699074074074074]
+model_delta_F:
+0.03033980582524276
+Metrics for round 16:
+val_BALD_fscore (validation precision) [0.95, 1.0]:
+[0.9975845410628019, 0.9885321100917431]
+val_BALD_fscore (validation recall) [0.95, 1.0]:
+[1.0, 0.9795454545454545]
+val_BALD_fscore (validation F score) [0.95, 1.0]:
+[0.9987908101571946, 0.9840182648401827]
+model_delta_F:
+0.02829386763812991
+Metrics for round 17:
+val_BALD_fscore (validation precision) [0.95, 1.0]:
+[0.9975903614457832, 0.9862700228832952]
+val_BALD_fscore (validation recall) [0.95, 1.0]:
+[1.0, 0.9795454545454545]
+val_BALD_fscore (validation F score) [0.95, 1.0]:
+[0.9987937273823884, 0.9828962371721779]
+model_delta_F:
+0.02877261138764109
+Metrics for round 18:
+val_BALD_fscore (validation precision) [0.95, 1.0]:
+[0.9975728155339806, 0.9792626728110599]
+val_BALD_fscore (validation recall) [0.95, 1.0]:
+[1.0, 0.9659090909090909]
+val_BALD_fscore (validation F score) [0.95, 1.0]:
+[0.9987849331713243, 0.9725400457665904]
+model_delta_F:
+0.02863382674108228
+Metrics for round 19:
+val_BALD_fscore (validation precision) [0.95, 1.0]:
+[1.0, 0.9929577464788732]
+val_BALD_fscore (validation recall) [0.95, 1.0]:
+[1.0, 0.9613636363636363]
+val_BALD_fscore (validation F score) [0.95, 1.0]:
+[1.0, 0.9769053117782911]
+model_delta_F:
+0.02886124864146844
+Metrics for round 20:
+val_BALD_fscore (validation precision) [0.95, 1.0]:
+[0.9975669099756691, 0.9953810623556582]
+val_BALD_fscore (validation recall) [0.95, 1.0]:
+[1.0, 0.9795454545454545]
+val_BALD_fscore (validation F score) [0.95, 1.0]:
+[0.9987819732034106, 0.9873997709049255]
+model_delta_F:
+0.02820636451301828

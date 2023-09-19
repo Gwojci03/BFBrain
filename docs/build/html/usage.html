@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Usage &#8212; bfbrain 1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b3523f8e" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=039e1c02" />
+    <script src="_static/documentation_options.js?v=f2a433a1"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Tutorial and User Guide" href="tutorial.html" />
+    <link rel="prev" title="Welcome to BFBrain’s documentation!" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="usage">
+<h1>Usage<a class="headerlink" href="#usage" title="Link to this heading">¶</a></h1>
+<section id="installation">
+<span id="id1"></span><h2>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h2>
+<p>To use BFBrain, it is highly advised to work in an environment with both Tensorflow and
+Jax installed with GPU support. Consult Tensorflow and Jax’s documentations for installation
+instructions. Once this is done, BFBrain can be installed using pip:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">python3 -m pip install BFBrain</span>
+</pre></div>
+</div>
+</section>
+<section id="quickstart">
+<span id="id2"></span><h2>Quickstart<a class="headerlink" href="#quickstart" title="Link to this heading">¶</a></h2>
+<p>BFBrain creates a Bayesian neural network approximated with Monte Carlo dropout which
+is trained to identify whether sets of quartic coefficients lead to potentials which are
+bounded-from-below. It does this via supervised learning with a computationally expensive oracle
+function which can numerically label bounded-from-below points. Since the oracle function
+can be too computationally expensive to be practical, BFBrain uses active learning techniques
+to reduce the number of explicit oracle labels it needs to achieve high performance.</p>
+<p>The following code demonstrates a simple training script for the analysis of
+the most general Two-Higgs doublet model (2HDM) with BFBrain:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">sympy</span> <span class="k">as</span> <span class="nn">sym</span>
+<span class="kn">from</span> <span class="nn">sympy</span> <span class="kn">import</span> <span class="n">I</span>
+<span class="kn">from</span> <span class="nn">sympy.physics.quantum.dagger</span> <span class="kn">import</span> <span class="n">Dagger</span>
+
+<span class="kn">from</span> <span class="nn">bfbrain</span> <span class="kn">import</span> <span class="n">DataManager</span><span class="p">,</span> <span class="n">BFBLearner</span><span class="p">,</span> <span class="n">ValidationFScore</span><span class="p">,</span> <span class="n">UnlabelledDeltaF</span>
+
+<span class="c1"># Write a SymPy function representing the scalar potential.</span>
+<span class="k">def</span> <span class="nf">V_2HDM</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span> <span class="n">lam</span><span class="p">):</span>
+   <span class="n">Phi1</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="n">phi</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span>
+   <span class="n">Phi2</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([</span><span class="n">phi</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">I</span><span class="o">*</span><span class="n">phi</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">phi</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="n">I</span><span class="o">*</span><span class="n">phi</span><span class="p">[</span><span class="mi">4</span><span class="p">]])</span>
+   <span class="n">phi1sq</span> <span class="o">=</span> <span class="n">Dagger</span><span class="p">(</span><span class="n">Phi1</span><span class="p">)</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">Phi1</span><span class="p">)</span>
+   <span class="n">phi2sq</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">simplify</span><span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">Phi2</span><span class="p">)</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">Phi2</span><span class="p">))</span>
+   <span class="n">phi12</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">simplify</span><span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">Phi1</span><span class="p">)</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">Phi2</span><span class="p">))</span>
+   <span class="n">phi21</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">simplify</span><span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">Phi2</span><span class="p">)</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">Phi1</span><span class="p">))</span>
+
+   <span class="n">QVec</span> <span class="o">=</span> <span class="p">(</span><span class="n">sym</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([(</span><span class="n">phi1sq</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="n">phi2sq</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span>
+                  <span class="n">phi1sq</span><span class="o">*</span><span class="n">phi2sq</span><span class="p">,</span> <span class="n">phi12</span><span class="o">*</span><span class="n">phi21</span><span class="p">,</span>
+                  <span class="p">(</span><span class="n">phi12</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">phi21</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span>
+                  <span class="n">I</span><span class="o">*</span><span class="p">(</span><span class="n">phi12</span><span class="o">**</span><span class="mi">2</span> <span class="o">-</span> <span class="n">phi21</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span>
+                  <span class="n">phi1sq</span><span class="o">*</span><span class="p">(</span><span class="n">phi12</span> <span class="o">+</span> <span class="n">phi21</span><span class="p">),</span>
+                  <span class="n">I</span><span class="o">*</span><span class="n">phi1sq</span><span class="o">*</span><span class="p">(</span><span class="n">phi12</span> <span class="o">-</span> <span class="n">phi21</span><span class="p">),</span>
+                  <span class="n">phi2sq</span><span class="o">*</span><span class="p">(</span><span class="n">phi12</span> <span class="o">+</span> <span class="n">phi21</span><span class="p">),</span>
+                  <span class="n">I</span><span class="o">*</span><span class="n">phi2sq</span><span class="o">*</span><span class="p">(</span><span class="n">phi12</span><span class="o">-</span><span class="n">phi21</span><span class="p">)]))</span><span class="o">.</span><span class="n">applyfunc</span><span class="p">(</span><span class="n">sym</span><span class="o">.</span><span class="n">simplify</span><span class="p">)</span>
+   <span class="k">return</span> <span class="n">QVec</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">lam</span><span class="p">)</span>
+
+<span class="c1"># Initialize a DataManager object which will handle</span>
+<span class="c1"># data generation and oracle labelling.</span>
+<span class="n">dm</span> <span class="o">=</span> <span class="n">DataManager</span><span class="o">.</span><span class="n">from_func</span><span class="p">(</span><span class="n">V_2HDM</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">niter</span> <span class="o">=</span> <span class="mi">100</span><span class="p">)</span>
+
+<span class="c1"># Specify performance metrics we wish to keep track of during active learning</span>
+<span class="c1"># generate an unlabelled sample of 10^6 points for evaluation with the metric UnlabelledDeltaF</span>
+<span class="n">unlabelled_lams</span> <span class="o">=</span> <span class="n">dm</span><span class="o">.</span><span class="n">create_random_lambdas</span><span class="p">(</span><span class="mi">1000000</span><span class="p">,</span> <span class="n">validation</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># ValidationFScore tracks the F score on a labelled validation data set.</span>
+<span class="c1"># UnlabelledDeltaF tracks the estimated change in the F score on an</span>
+<span class="c1"># unlabelled data set, computed from the stability of predictions over</span>
+<span class="c1">#different iterations of active learning.</span>
+<span class="n">metrics</span> <span class="o">=</span> <span class="p">[</span><span class="n">ValidationFScore</span><span class="p">(),</span> <span class="n">UnlabelledDeltaF</span><span class="p">(</span><span class="n">unlabelled_lams</span><span class="p">)]</span>
+
+<span class="c1"># Initialize the active learning object. This specifies that</span>
+<span class="c1"># the neural network should have 5 hidden layers of 128 neurons each, and</span>
+<span class="c1"># use 1000 randomly generated sets of quartic coefficients as the Initia</span>
+<span class="c1"># training sample (which will then grow with active learning)</span>
+<span class="n">AL</span> <span class="o">=</span> <span class="n">BFBLearner</span><span class="o">.</span><span class="n">init_for_first_run</span><span class="p">(</span><span class="n">dm</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="n">metrics</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+
+<span class="c1">#  Run the active learning loop.</span>
+<span class="c1">#  BFBrain is instructed to conduct 20 rounds of active learning</span>
+<span class="c1">#  using the BALD (Bayesian Active Learning by Disagreement)</span>
+<span class="c1">#  acquisition function, and save the resulting classifier, and</span>
+<span class="c1">#  then save the BFBLearner object (including the classifier)</span>
+<span class="c1">#  in a directory &#39;saved_AL&#39;.</span>
+<span class="n">AL</span><span class="o">.</span><span class="n">AL_loop</span><span class="p">(</span><span class="s1">&#39;saved_AL&#39;</span><span class="p">,</span> <span class="n">score_fn</span> <span class="o">=</span> <span class="s1">&#39;BALD&#39;</span><span class="p">,</span> <span class="n">nstop</span> <span class="o">=</span> <span class="mi">20</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The neural network can then be loaded and used in an analysis. Because the neural network uses Monte Carlo dropout to quantify uncertainty, performing many forward passes through the network with the
+<a class="reference internal" href="bfbrain.html#bfbrain.Score_Functions.MC_call_fast" title="bfbrain.Score_Functions.MC_call_fast"><code class="xref py py-meth docutils literal notranslate"><span class="pre">MC_call_fast</span></code></a> function will enable rapid classification of unknown points as bounded from below or not, while other specialized methods can be used
+to extract different uncertainty estimats. As an example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bfbrain</span> <span class="kn">import</span> <span class="n">BFBLearner</span><span class="p">,</span> <span class="n">MC_call_fast</span><span class="p">,</span> <span class="n">BALD</span><span class="p">,</span> <span class="n">Max_Entropy</span><span class="p">,</span> <span class="n">Variation_Ratios</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">from</span> <span class="nn">numpy.random</span> <span class="kn">import</span> <span class="n">default_rng</span>
+
+<span class="c1"># Generate 100000 random sets of 2HDM quartic coefficients,</span>
+<span class="c1"># all of which have values between -5 and 5.</span>
+<span class="n">rng</span> <span class="o">=</span> <span class="n">default_rng</span><span class="p">(</span><span class="mi">12345</span><span class="p">)</span>
+<span class="n">rand_lams</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mf">5.</span><span class="p">,</span> <span class="mf">5.</span><span class="p">,</span> <span class="p">(</span><span class="mi">100000</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+
+<span class="c1"># Load the neural network produced by the last script</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span><span class="s1">&#39;saved_AL/model&#39;</span><span class="p">)</span>
+<span class="c1"># Can alternatively be loaded as...</span>
+<span class="c1"># model = BFBLearner.from_file(&#39;saved_AL&#39;).model</span>
+
+<span class="c1"># Make predictions on rand_lams using Monte Carlo dropout with</span>
+<span class="c1"># 100 forward passes through the network.</span>
+<span class="n">preds</span> <span class="o">=</span> <span class="p">(</span><span class="n">MC_call_fast</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">rand_lams</span><span class="p">,</span> <span class="n">n_trials</span> <span class="o">=</span> <span class="mi">100</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mf">0.5</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+
+<span class="c1"># preds is now a NumPy array where the kth entry is True if the BFBrain model</span>
+<span class="c1"># predicts the kth element of rand_lams represents a bounded-from-below potential,</span>
+<span class="c1"># and False otherwise. We can evaluate uncertainty metrics on the predictions,</span>
+<span class="c1"># like mutual information, Shannon entropy, and variation ratios as well.</span>
+<span class="n">mutual_info</span> <span class="o">=</span> <span class="p">(</span><span class="n">BALD</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">rand_lams</span><span class="p">,</span> <span class="n">n_trials</span> <span class="o">=</span> <span class="mi">100</span><span class="p">))</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<span class="n">entropy</span> <span class="o">=</span> <span class="p">(</span><span class="n">Max_Entropy</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">rand_lams</span><span class="p">,</span> <span class="n">n_trials</span> <span class="o">=</span> <span class="mi">100</span><span class="p">))</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<span class="n">var_ratios</span> <span class="o">=</span> <span class="p">(</span><span class="n">Variation_Ratios</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">rand_lams</span><span class="p">,</span> <span class="n">n_trials</span> <span class="o">=</span> <span class="mi">100</span><span class="p">))</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">bfbrain</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Usage</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#quickstart">Quickstart</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial and User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">BFBrain</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Welcome to BFBrain’s documentation!</a></li>
+      <li>Next: <a href="tutorial.html" title="next chapter">Tutorial and User Guide</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, George Wojcik.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.2.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
+      
+      |
+      <a href="_sources/usage.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

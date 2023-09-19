@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>bfbrain.Potential_Functions &#8212; bfbrain 1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b3523f8e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=039e1c02" />
+    <script src="../../_static/documentation_options.js?v=f2a433a1"></script>
+    <script src="../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for bfbrain.Potential_Functions</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;This module contains a number of SymPy functions for the quartic parts </span>
+<span class="sd">of scalar potentials which the program can parse for analysis. Any other </span>
+<span class="sd">potential functions you may want to use can be implemented by writing them </span>
+<span class="sd">in the same format as these.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">sympy</span> <span class="k">as</span> <span class="nn">sym</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">sympy</span> <span class="kn">import</span> <span class="n">I</span>
+<span class="kn">from</span> <span class="nn">sympy.physics.quantum.dagger</span> <span class="kn">import</span> <span class="n">Dagger</span>
+<span class="kn">from</span> <span class="nn">sympy.matrices.expressions</span> <span class="kn">import</span> <span class="n">Trace</span>
+
+<span class="k">def</span> <span class="nf">_sim_Trace</span><span class="p">(</span><span class="n">M</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A function which simplifies the trace of some matrix.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">sym</span><span class="o">.</span><span class="n">simplify</span><span class="p">(</span><span class="n">Trace</span><span class="p">(</span><span class="n">M</span><span class="p">))</span>
+
+<span class="k">def</span> <span class="nf">_sim_expand</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A function which expands and simplifies an expression. Useful for </span>
+<span class="sd">    eliminating complex numbers from the potential, so NumPy can work with </span>
+<span class="sd">    only real numbers.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">sym</span><span class="o">.</span><span class="n">simplify</span><span class="p">(</span><span class="n">sym</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+
+<span class="c1">#The square root of 2-- it comes up a lot.</span>
+<span class="n">_sqrt2</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+
+
+
+<div class="viewcode-block" id="V_Precustodial">
+<a class="viewcode-back" href="../../bfbrain.html#bfbrain.Potential_Functions.V_Precustodial">[docs]</a>
+<span class="k">def</span> <span class="nf">V_Precustodial</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span> <span class="n">lam</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The &quot;precustodial&quot; generalization of the Georgi-Machacheck </span>
+<span class="sd">    model given in arXiv:hep-ph/2012.13947. The quartic coefficients are </span>
+<span class="sd">    parameterized in the same manner as Eq.(3.4) of that work.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">H</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="n">phi</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span>
+    <span class="n">A</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([[(</span><span class="n">phi</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">I</span><span class="o">*</span><span class="n">phi</span><span class="p">[</span><span class="mi">4</span><span class="p">])</span><span class="o">/</span><span class="n">_sqrt2</span><span class="p">,</span> <span class="o">-</span><span class="n">phi</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="n">I</span><span class="o">*</span><span class="n">phi</span><span class="p">[</span><span class="mi">5</span><span class="p">]],[</span><span class="n">phi</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">+</span> <span class="n">I</span><span class="o">*</span><span class="n">phi</span><span class="p">[</span><span class="mi">6</span><span class="p">],</span> <span class="o">-</span><span class="p">(</span><span class="n">phi</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">I</span><span class="o">*</span><span class="n">phi</span><span class="p">[</span><span class="mi">4</span><span class="p">])</span><span class="o">/</span><span class="n">_sqrt2</span><span class="p">]])</span>
+    <span class="n">B</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([[</span><span class="n">phi</span><span class="p">[</span><span class="mi">7</span><span class="p">],</span> <span class="o">-</span><span class="n">phi</span><span class="p">[</span><span class="mi">8</span><span class="p">]</span> <span class="o">-</span> <span class="n">I</span><span class="o">*</span><span class="n">phi</span><span class="p">[</span><span class="mi">9</span><span class="p">]],</span> <span class="p">[</span><span class="o">-</span><span class="n">phi</span><span class="p">[</span><span class="mi">8</span><span class="p">]</span> <span class="o">+</span> <span class="n">I</span><span class="o">*</span><span class="n">phi</span><span class="p">[</span><span class="mi">9</span><span class="p">],</span> <span class="o">-</span><span class="n">phi</span><span class="p">[</span><span class="mi">7</span><span class="p">]]])</span><span class="o">/</span><span class="n">_sqrt2</span>
+    <span class="n">is2</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">],[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">]])</span>
+
+    <span class="n">TrHsq</span> <span class="o">=</span> <span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">H</span><span class="p">)</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">H</span><span class="p">))</span><span class="o">.</span><span class="n">simplify</span><span class="p">()</span>
+    <span class="n">TrAsq</span> <span class="o">=</span> <span class="n">Trace</span><span class="p">(</span><span class="n">A</span><span class="o">*</span><span class="n">Dagger</span><span class="p">(</span><span class="n">A</span><span class="p">))</span>
+    <span class="n">TrBsq</span> <span class="o">=</span> <span class="n">Trace</span><span class="p">(</span><span class="n">B</span><span class="o">*</span><span class="n">Dagger</span><span class="p">(</span><span class="n">B</span><span class="p">))</span>
+    <span class="n">QVec</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([(</span><span class="n">TrHsq</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="mi">4</span><span class="p">,</span> <span class="p">(</span><span class="n">TrAsq</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="mi">4</span><span class="p">,</span> <span class="n">_sim_Trace</span><span class="p">(</span><span class="n">A</span><span class="o">*</span><span class="n">Dagger</span><span class="p">(</span><span class="n">A</span><span class="p">)</span><span class="o">*</span><span class="n">A</span><span class="o">*</span><span class="n">Dagger</span><span class="p">(</span><span class="n">A</span><span class="p">))</span><span class="o">/</span><span class="mi">4</span><span class="p">,</span>
+                                    <span class="p">(</span><span class="n">TrBsq</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="mi">24</span><span class="p">,</span> <span class="n">TrHsq</span><span class="o">*</span><span class="n">TrAsq</span><span class="p">,</span> <span class="n">Dagger</span><span class="p">(</span><span class="n">H</span><span class="p">)</span><span class="o">*</span><span class="n">A</span><span class="o">*</span><span class="n">Dagger</span><span class="p">(</span><span class="n">A</span><span class="p">)</span><span class="o">*</span><span class="n">H</span><span class="p">,</span>
+                                    <span class="n">TrHsq</span><span class="o">*</span><span class="n">TrBsq</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">TrAsq</span><span class="o">*</span><span class="n">TrBsq</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">_sim_expand</span><span class="p">(</span><span class="n">_sim_Trace</span><span class="p">(</span><span class="n">A</span><span class="o">*</span><span class="n">B</span><span class="p">)</span><span class="o">*</span><span class="n">_sim_Trace</span><span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">A</span><span class="p">)</span><span class="o">*</span><span class="n">B</span><span class="p">))</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span>
+                                    <span class="p">((</span><span class="n">H</span><span class="o">.</span><span class="n">T</span><span class="p">)</span><span class="o">*</span><span class="n">is2</span><span class="o">*</span><span class="n">Dagger</span><span class="p">(</span><span class="n">A</span><span class="p">)</span><span class="o">*</span><span class="n">B</span><span class="o">*</span><span class="n">H</span><span class="o">-</span><span class="n">Dagger</span><span class="p">(</span><span class="n">H</span><span class="p">)</span><span class="o">*</span><span class="n">B</span><span class="o">*</span><span class="n">A</span><span class="o">*</span><span class="n">is2</span><span class="o">*</span><span class="p">(</span><span class="n">sym</span><span class="o">.</span><span class="n">conjugate</span><span class="p">(</span><span class="n">H</span><span class="p">)))</span><span class="o">/</span><span class="mi">2</span>
+                                    <span class="p">])</span><span class="o">.</span><span class="n">applyfunc</span><span class="p">(</span><span class="n">sym</span><span class="o">.</span><span class="n">simplify</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">QVec</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">lam</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="V_GM">
+<a class="viewcode-back" href="../../bfbrain.html#bfbrain.Potential_Functions.V_GM">[docs]</a>
+<span class="k">def</span> <span class="nf">V_GM</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span> <span class="n">lam</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The Georgi-Machacheck potential, following the conventions of </span>
+<span class="sd">    Eq.(5) of arXiv:hep-ph/1404.2640</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">Phi</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([[</span><span class="n">phi</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">0</span><span class="p">],[</span><span class="mi">0</span><span class="p">,</span> <span class="n">phi</span><span class="p">[</span><span class="mi">0</span><span class="p">]]])</span><span class="o">/</span><span class="n">_sqrt2</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([[</span><span class="n">phi</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">I</span><span class="o">*</span><span class="n">phi</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">phi</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">+</span> <span class="n">I</span><span class="o">*</span><span class="n">phi</span><span class="p">[</span><span class="mi">4</span><span class="p">],</span> <span class="n">phi</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span> <span class="o">+</span> <span class="n">I</span><span class="o">*</span><span class="n">phi</span><span class="p">[</span><span class="mi">6</span><span class="p">]],[</span><span class="o">-</span><span class="n">phi</span><span class="p">[</span><span class="mi">7</span><span class="p">]</span> <span class="o">+</span> <span class="n">I</span><span class="o">*</span><span class="n">phi</span><span class="p">[</span><span class="mi">8</span><span class="p">],</span> <span class="n">_sqrt2</span><span class="o">*</span><span class="n">phi</span><span class="p">[</span><span class="mi">9</span><span class="p">],</span> <span class="n">phi</span><span class="p">[</span><span class="mi">7</span><span class="p">]</span> <span class="o">+</span> <span class="n">I</span><span class="o">*</span><span class="n">phi</span><span class="p">[</span><span class="mi">8</span><span class="p">]],[</span><span class="n">phi</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span> <span class="o">-</span> <span class="n">I</span><span class="o">*</span><span class="n">phi</span><span class="p">[</span><span class="mi">6</span><span class="p">],</span> <span class="o">-</span><span class="n">phi</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">+</span> <span class="n">I</span><span class="o">*</span><span class="n">phi</span><span class="p">[</span><span class="mi">4</span><span class="p">],</span> <span class="n">phi</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">I</span><span class="o">*</span><span class="n">phi</span><span class="p">[</span><span class="mi">2</span><span class="p">]]])</span><span class="o">/</span><span class="n">_sqrt2</span>
+    <span class="n">TrPhisq</span> <span class="o">=</span> <span class="n">_sim_Trace</span><span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">Phi</span><span class="p">)</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">Phi</span><span class="p">))</span>
+    <span class="n">TrXsq</span> <span class="o">=</span> <span class="n">_sim_Trace</span><span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">X</span><span class="p">)</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">X</span><span class="p">))</span>
+    <span class="n">tau</span> <span class="o">=</span> <span class="p">[</span><span class="n">sym</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="o">/</span><span class="mi">2</span><span class="p">],[</span><span class="mi">1</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">]]),</span> <span class="n">sym</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([[</span><span class="mi">0</span><span class="p">,</span><span class="o">-</span><span class="n">I</span><span class="o">/</span><span class="mi">2</span><span class="p">],[</span><span class="n">I</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">]]),</span> <span class="n">sym</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([[</span><span class="mi">1</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">],[</span><span class="mi">0</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="o">/</span><span class="mi">2</span><span class="p">]])]</span>
+    <span class="c1"># tau = sym.Array([[[0,1],[1,0]], [[0,-I],[I,0]], [[1,0],[0,-1]]])</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="p">[</span><span class="n">sym</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">]])</span><span class="o">/</span><span class="n">_sqrt2</span><span class="p">,</span> <span class="n">sym</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([[</span><span class="mi">0</span><span class="p">,</span><span class="o">-</span><span class="n">I</span><span class="p">,</span><span class="mi">0</span><span class="p">],[</span><span class="n">I</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="o">-</span><span class="n">I</span><span class="p">],[</span><span class="mi">0</span><span class="p">,</span><span class="n">I</span><span class="p">,</span><span class="mi">0</span><span class="p">]])</span><span class="o">/</span><span class="n">_sqrt2</span><span class="p">,</span> <span class="n">sym</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">]])]</span>
+    <span class="n">lam5_term</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+            <span class="n">lam5_term</span> <span class="o">+=</span> <span class="n">_sim_Trace</span><span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">Phi</span><span class="p">)</span><span class="o">*</span><span class="n">tau</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="n">Phi</span><span class="o">*</span><span class="n">tau</span><span class="p">[</span><span class="n">j</span><span class="p">])</span><span class="o">*</span><span class="n">_sim_Trace</span><span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">X</span><span class="p">)</span><span class="o">*</span><span class="n">t</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="n">X</span><span class="o">*</span><span class="n">t</span><span class="p">[</span><span class="n">j</span><span class="p">])</span>
+    <span class="n">QVec</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([</span><span class="n">TrPhisq</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">TrPhisq</span><span class="o">*</span><span class="n">TrXsq</span><span class="p">,</span> <span class="n">_sim_expand</span><span class="p">(</span><span class="n">_sim_Trace</span><span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">X</span><span class="p">)</span><span class="o">*</span><span class="n">X</span><span class="o">*</span><span class="n">Dagger</span><span class="p">(</span><span class="n">X</span><span class="p">)</span><span class="o">*</span><span class="n">X</span><span class="p">)),</span>
+                       <span class="n">TrXsq</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span> <span class="n">_sim_expand</span><span class="p">(</span><span class="n">lam5_term</span><span class="p">)])</span><span class="o">.</span><span class="n">applyfunc</span><span class="p">(</span><span class="n">sym</span><span class="o">.</span><span class="n">simplify</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">QVec</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">lam</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="V_2HDM">
+<a class="viewcode-back" href="../../bfbrain.html#bfbrain.Potential_Functions.V_2HDM">[docs]</a>
+<span class="k">def</span> <span class="nf">V_2HDM</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span> <span class="n">lam</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The most general 2-Higgs doublet model, following the conventions </span>
+<span class="sd">    of Eq.(1) of hep-ph/0609018</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">Phi1</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="n">phi</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span>
+    <span class="n">Phi2</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([</span><span class="n">phi</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">I</span><span class="o">*</span><span class="n">phi</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">phi</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="n">I</span><span class="o">*</span><span class="n">phi</span><span class="p">[</span><span class="mi">4</span><span class="p">]])</span>
+    <span class="n">phi1sq</span> <span class="o">=</span> <span class="n">Dagger</span><span class="p">(</span><span class="n">Phi1</span><span class="p">)</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">Phi1</span><span class="p">)</span>
+    <span class="n">phi2sq</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">simplify</span><span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">Phi2</span><span class="p">)</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">Phi2</span><span class="p">))</span>
+    <span class="n">phi12</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">simplify</span><span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">Phi1</span><span class="p">)</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">Phi2</span><span class="p">))</span>
+    <span class="n">phi21</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">simplify</span><span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">Phi2</span><span class="p">)</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">Phi1</span><span class="p">))</span>
+
+    <span class="n">QVec</span> <span class="o">=</span> <span class="p">(</span><span class="n">sym</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([(</span><span class="n">phi1sq</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="n">phi2sq</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">phi1sq</span><span class="o">*</span><span class="n">phi2sq</span><span class="p">,</span> <span class="n">phi12</span><span class="o">*</span><span class="n">phi21</span><span class="p">,</span> 
+                       <span class="p">(</span><span class="n">phi12</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">phi21</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">I</span><span class="o">*</span><span class="p">(</span><span class="n">phi12</span><span class="o">**</span><span class="mi">2</span> <span class="o">-</span> <span class="n">phi21</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span>
+                       <span class="n">phi1sq</span><span class="o">*</span><span class="p">(</span><span class="n">phi12</span> <span class="o">+</span> <span class="n">phi21</span><span class="p">),</span> <span class="n">I</span><span class="o">*</span><span class="n">phi1sq</span><span class="o">*</span><span class="p">(</span><span class="n">phi12</span> <span class="o">-</span> <span class="n">phi21</span><span class="p">),</span> <span class="n">phi2sq</span><span class="o">*</span><span class="p">(</span><span class="n">phi12</span> <span class="o">+</span> <span class="n">phi21</span><span class="p">),</span> <span class="n">I</span><span class="o">*</span><span class="n">phi2sq</span><span class="o">*</span><span class="p">(</span><span class="n">phi12</span><span class="o">-</span><span class="n">phi21</span><span class="p">)]))</span><span class="o">.</span><span class="n">applyfunc</span><span class="p">(</span><span class="n">sym</span><span class="o">.</span><span class="n">simplify</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">QVec</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">lam</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="V_3HDM">
+<a class="viewcode-back" href="../../bfbrain.html#bfbrain.Potential_Functions.V_3HDM">[docs]</a>
+<span class="k">def</span> <span class="nf">V_3HDM</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span> <span class="n">lam</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A 3HDM with Z2xZ2 symmetry, for which no BFB conditions are known.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">phi1</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="n">phi</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span>
+    <span class="n">phi2</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([</span><span class="n">phi</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">I</span><span class="o">*</span><span class="n">phi</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">phi</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">+</span> <span class="n">I</span><span class="o">*</span><span class="n">phi</span><span class="p">[</span><span class="mi">4</span><span class="p">]])</span>
+    <span class="n">phi3</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([</span><span class="n">phi</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span> <span class="o">+</span> <span class="n">I</span><span class="o">*</span><span class="n">phi</span><span class="p">[</span><span class="mi">6</span><span class="p">],</span> <span class="n">phi</span><span class="p">[</span><span class="mi">7</span><span class="p">]</span> <span class="o">+</span> <span class="n">I</span><span class="o">*</span><span class="n">phi</span><span class="p">[</span><span class="mi">8</span><span class="p">]])</span>
+    <span class="n">phi1sq</span> <span class="o">=</span> <span class="n">_sim_Trace</span><span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">phi1</span><span class="p">)</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">phi1</span><span class="p">))</span>
+    <span class="n">phi2sq</span> <span class="o">=</span> <span class="n">_sim_Trace</span><span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">phi2</span><span class="p">)</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">phi2</span><span class="p">))</span>
+    <span class="n">phi3sq</span> <span class="o">=</span> <span class="n">_sim_Trace</span><span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">phi3</span><span class="p">)</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">phi3</span><span class="p">))</span>
+    <span class="n">phi12</span> <span class="o">=</span> <span class="n">_sim_Trace</span><span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">phi1</span><span class="p">)</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">phi2</span><span class="p">))</span>
+    <span class="n">phi21</span> <span class="o">=</span> <span class="n">_sim_Trace</span><span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">phi2</span><span class="p">)</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">phi1</span><span class="p">))</span>
+    <span class="n">phi13</span> <span class="o">=</span> <span class="n">_sim_Trace</span><span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">phi1</span><span class="p">)</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">phi3</span><span class="p">))</span>
+    <span class="n">phi31</span> <span class="o">=</span> <span class="n">_sim_Trace</span><span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">phi3</span><span class="p">)</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">phi1</span><span class="p">))</span>
+    <span class="n">phi23</span> <span class="o">=</span> <span class="n">_sim_Trace</span><span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">phi2</span><span class="p">)</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">phi3</span><span class="p">))</span>
+    <span class="n">phi32</span> <span class="o">=</span> <span class="n">_sim_Trace</span><span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">phi3</span><span class="p">)</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">phi2</span><span class="p">))</span>
+
+    <span class="n">QVec</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([</span><span class="n">phi1sq</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">phi2sq</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">phi3sq</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">phi1sq</span><span class="o">*</span><span class="n">phi2sq</span><span class="p">,</span> <span class="n">phi1sq</span><span class="o">*</span><span class="n">phi3sq</span><span class="p">,</span> <span class="n">phi2sq</span><span class="o">*</span><span class="n">phi3sq</span><span class="p">,</span> <span class="n">phi12</span><span class="o">*</span><span class="n">phi21</span><span class="p">,</span> <span class="n">phi13</span><span class="o">*</span><span class="n">phi31</span><span class="p">,</span> <span class="n">phi23</span><span class="o">*</span><span class="n">phi32</span><span class="p">,</span> <span class="p">(</span><span class="n">phi12</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">phi21</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">I</span><span class="o">*</span><span class="p">(</span><span class="n">phi12</span><span class="o">**</span><span class="mi">2</span> <span class="o">-</span> <span class="n">phi21</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> 
+                       <span class="p">(</span><span class="n">phi13</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">phi31</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">I</span><span class="o">*</span><span class="p">(</span><span class="n">phi13</span><span class="o">**</span><span class="mi">2</span> <span class="o">-</span> <span class="n">phi31</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="n">phi23</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">phi32</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">I</span><span class="o">*</span><span class="p">(</span><span class="n">phi23</span><span class="o">**</span><span class="mi">2</span><span class="o">-</span><span class="n">phi32</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">])</span><span class="o">.</span><span class="n">applyfunc</span><span class="p">(</span><span class="n">_sim_expand</span><span class="p">)</span><span class="o">.</span><span class="n">applyfunc</span><span class="p">(</span><span class="n">sym</span><span class="o">.</span><span class="n">simplify</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">QVec</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">lam</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="V_3HDM_U1">
+<a class="viewcode-back" href="../../bfbrain.html#bfbrain.Potential_Functions.V_3HDM_U1">[docs]</a>
+<span class="k">def</span> <span class="nf">V_3HDM_U1</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span> <span class="n">lam</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A 3HDM with U1xU1 symmetry.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">phi1</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="n">phi</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span>
+    <span class="n">phi2</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([</span><span class="n">phi</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">I</span><span class="o">*</span><span class="n">phi</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">phi</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">+</span> <span class="n">I</span><span class="o">*</span><span class="n">phi</span><span class="p">[</span><span class="mi">4</span><span class="p">]])</span>
+    <span class="n">phi3</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([</span><span class="n">phi</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span> <span class="o">+</span> <span class="n">I</span><span class="o">*</span><span class="n">phi</span><span class="p">[</span><span class="mi">6</span><span class="p">],</span> <span class="n">phi</span><span class="p">[</span><span class="mi">7</span><span class="p">]</span> <span class="o">+</span> <span class="n">I</span><span class="o">*</span><span class="n">phi</span><span class="p">[</span><span class="mi">8</span><span class="p">]])</span>
+    <span class="n">phi1sq</span> <span class="o">=</span> <span class="n">_sim_Trace</span><span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">phi1</span><span class="p">)</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">phi1</span><span class="p">))</span>
+    <span class="n">phi2sq</span> <span class="o">=</span> <span class="n">_sim_Trace</span><span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">phi2</span><span class="p">)</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">phi2</span><span class="p">))</span>
+    <span class="n">phi3sq</span> <span class="o">=</span> <span class="n">_sim_Trace</span><span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">phi3</span><span class="p">)</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">phi3</span><span class="p">))</span>
+    <span class="n">phi12</span> <span class="o">=</span> <span class="n">_sim_Trace</span><span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">phi1</span><span class="p">)</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">phi2</span><span class="p">))</span>
+    <span class="n">phi21</span> <span class="o">=</span> <span class="n">_sim_Trace</span><span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">phi2</span><span class="p">)</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">phi1</span><span class="p">))</span>
+    <span class="n">phi13</span> <span class="o">=</span> <span class="n">_sim_Trace</span><span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">phi1</span><span class="p">)</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">phi3</span><span class="p">))</span>
+    <span class="n">phi31</span> <span class="o">=</span> <span class="n">_sim_Trace</span><span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">phi3</span><span class="p">)</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">phi1</span><span class="p">))</span>
+    <span class="n">phi23</span> <span class="o">=</span> <span class="n">_sim_Trace</span><span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">phi2</span><span class="p">)</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">phi3</span><span class="p">))</span>
+    <span class="n">phi32</span> <span class="o">=</span> <span class="n">_sim_Trace</span><span class="p">(</span><span class="n">Dagger</span><span class="p">(</span><span class="n">phi3</span><span class="p">)</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">phi2</span><span class="p">))</span>
+
+    <span class="n">QVec</span> <span class="o">=</span> <span class="n">sym</span><span class="o">.</span><span class="n">Matrix</span><span class="p">([</span><span class="n">phi1sq</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">phi2sq</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">phi3sq</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">phi1sq</span><span class="o">*</span><span class="n">phi2sq</span><span class="p">,</span> <span class="n">phi1sq</span><span class="o">*</span><span class="n">phi3sq</span><span class="p">,</span> <span class="n">phi2sq</span><span class="o">*</span><span class="n">phi3sq</span><span class="p">,</span> <span class="n">phi12</span><span class="o">*</span><span class="n">phi21</span><span class="p">,</span> <span class="n">phi13</span><span class="o">*</span><span class="n">phi31</span><span class="p">,</span> <span class="n">phi23</span><span class="o">*</span><span class="n">phi32</span><span class="p">])</span><span class="o">.</span><span class="n">applyfunc</span><span class="p">(</span><span class="n">_sim_expand</span><span class="p">)</span><span class="o">.</span><span class="n">applyfunc</span><span class="p">(</span><span class="n">sym</span><span class="o">.</span><span class="n">simplify</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">QVec</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">lam</span><span class="p">)</span></div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">bfbrain</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorial.html">Tutorial and User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">BFBrain</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, George Wojcik.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.2.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
