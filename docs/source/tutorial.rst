@@ -40,6 +40,6 @@ The code samples in the tutorial are accompanied by `corresponding Jupyter noteb
    training
    analysis
 
-.. [1] Wojcik, George. In Preparation [arXiv:2309.XXXXX]
+.. [1] G.N. Wojcik. "BFBrain: Scalar Bounded-from-Below Conditions with Bayesian Active Learning" [`arXiv:2309.10959 <https://arxiv.org/abs/2309.10959>` [hep-ph]]
 
-.. [2] Gal, Yarin, Jiri Hron, and Alex Kendall. "Concrete dropout." Advances in neural information processing systems 30 (2017).
+.. [2] Y. Gal, J. Hron, and A. Kendall. "Concrete dropout." Advances in neural information processing systems 30 (2017).
