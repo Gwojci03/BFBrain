@@ -12,9 +12,23 @@ Note that it is highly recommended that BFBrain only be run on a machine with Te
 $ pip install bfbrain
 ```
 
-
 ## License
 
 `BFBrain` was created by George Wojcik. It is licensed under the terms
 of the MIT license.
 
+## Cite us
+
+If BFBrain has proved useful in your research, please give thought to citing our original [paper](https://arxiv.org/abs/2309.10959) which introduces the BFBrain package and describes its analysis approach. To cite it, use:
+
+```
+@article{Wojcik:2023usm,
+    author = "Wojcik, George N.",
+    title = "{BFBrain: Scalar Bounded-From-Below Conditions from Bayesian Active Learning}",
+    eprint = "2309.10959",
+    archivePrefix = "arXiv",
+    primaryClass = "hep-ph",
+    month = "9",
+    year = "2023"
+}
+```
