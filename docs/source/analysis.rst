@@ -176,4 +176,4 @@ script demonstrates the technique in Python:
     # Since we're working in Python, the above can be sped up using the @tf.function decorator, but we don't do that here.
 
 
-.. [1] Wojcik, George. In Preparation [arXiv:2309.XXXXX]
+.. [1] G.N. Wojcik. "BFBrain: Scalar Bounded-from-Below Conditions with Bayesian Active Learning" [`arXiv:2309.10959 <https://arxiv.org/abs/2309.10959>`_ [hep-ph]]
