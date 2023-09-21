@@ -219,4 +219,4 @@ A potential pitfall when implementing customized oracles and oracle tests can ar
 often during training. Because the :class:`DataManager <bfbrain.Data_Manager.DataManager>` object is saved using pickle, in order to load an instance of the class which has a custom oracle or 
 oracle test function must have the SAME custom function be accessible from the top level of the module-- otherwise the program will throw an exception.
 
-.. [1] Wojcik, George. In Preparation [arXiv:2309.XXXXX]
+.. [1] G.N. Wojcik. "BFBrain: Scalar Bounded-from-Below Conditions with Bayesian Active Learning" [`arXiv:2309.10959 <https://arxiv.org/abs/2309.10959>`_ [hep-ph]]
