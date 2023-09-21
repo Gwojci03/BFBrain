@@ -45,4 +45,4 @@ Indices and tables
 * :ref:`modindex`
 * :ref:`search`
 
-.. [1] Wojcik, George. In Preparation [arXiv:2309.XXXXX]
+.. [1] G.N. Wojcik. "BFBrain: Scalar Bounded-from-Below Conditions with Bayesian Active Learning" [`arXiv:2309.10959 <https://arxiv.org/abs/2309.10959>`_ [hep-ph]]
