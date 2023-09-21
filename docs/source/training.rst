@@ -189,7 +189,7 @@ to find the index at which this stopping criterion would have stopped AL's origi
 Finally, custom stopping criteria can be created by writing new classes which inherit from :class:`StoppingCondition <bfbrain.AL_Metrics.StoppingCondition>` or creating :class:`StoppingCondition <bfbrain.AL_Metrics.StoppingCondition>`
 objects with different arguments in the constructor-- in either case, it is highly recommended to inspect :class:`the StoppingCondition documentation <bfbrain.AL_Metrics.StoppingCondition>` before attempting to do so.
 
-.. [1] Wojcik, G. N., in Preparation [arXiv:2309.XXXXX]
+.. [1] G.N. Wojcik. "BFBrain: Scalar Bounded-from-Below Conditions with Bayesian Active Learning" [`arXiv:2309.10959 <https://arxiv.org/abs/2309.10959>` [hep-ph]]
 
 .. [2] Gal, Y., & Ghahramani, Z. (2016, June). Dropout as a bayesian approximation: Representing model uncertainty in deep learning. In international conference on machine learning (pp. 1050-1059). PMLR.
 
